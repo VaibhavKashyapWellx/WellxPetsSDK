@@ -1,0 +1,289 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+
+import '../models/pet.dart';
+import '../models/health_models.dart';
+import '../services/claude_proxy_service.dart';
+import '../services/pet_health_context.dart';
+import '../services/vet_system_prompt.dart';
+import 'health_provider.dart';
+import 'pet_provider.dart';
+import 'sdk_providers.dart';
+
+// ---------------------------------------------------------------------------
+// Chat Message
+// ---------------------------------------------------------------------------
+
+@immutable
+class ChatMessage {
+  final String id;
+  final String role; // 'user' or 'assistant'
+  final String content;
+  final DateTime timestamp;
+  final bool isStreaming;
+
+  const ChatMessage({
+    required this.id,
+    required this.role,
+    required this.content,
+    required this.timestamp,
+    this.isStreaming = false,
+  });
+
+  ChatMessage copyWith({
+    String? content,
+    bool? isStreaming,
+  }) {
+    return ChatMessage(
+      id: id,
+      role: role,
+      content: content ?? this.content,
+      timestamp: timestamp,
+      isStreaming: isStreaming ?? this.isStreaming,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Chat State
+// ---------------------------------------------------------------------------
+
+@immutable
+class VetChatState {
+  final List<ChatMessage> messages;
+  final bool isLoading;
+  final String? errorMessage;
+
+  const VetChatState({
+    this.messages = const [],
+    this.isLoading = false,
+    this.errorMessage,
+  });
+
+  VetChatState copyWith({
+    List<ChatMessage>? messages,
+    bool? isLoading,
+    String? errorMessage,
+  }) {
+    return VetChatState(
+      messages: messages ?? this.messages,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Vet Chat Notifier
+// ---------------------------------------------------------------------------
+
+class VetChatNotifier extends StateNotifier<VetChatState> {
+  final ClaudeProxyService _claudeService;
+  final Pet? _pet;
+  final List<Biomarker> _biomarkers;
+  final List<Medication> _medications;
+  final List<HealthAlert> _healthAlerts;
+  final List<MedicalRecord> _medicalRecords;
+  final List<WalkSession> _walkSessions;
+  final List<PetDocument> _documents;
+
+  static const _uuid = Uuid();
+
+  VetChatNotifier({
+    required ClaudeProxyService claudeService,
+    required Pet? pet,
+    List<Biomarker> biomarkers = const [],
+    List<Medication> medications = const [],
+    List<HealthAlert> healthAlerts = const [],
+    List<MedicalRecord> medicalRecords = const [],
+    List<WalkSession> walkSessions = const [],
+    List<PetDocument> documents = const [],
+  })  : _claudeService = claudeService,
+        _pet = pet,
+        _biomarkers = biomarkers,
+        _medications = medications,
+        _healthAlerts = healthAlerts,
+        _medicalRecords = medicalRecords,
+        _walkSessions = walkSessions,
+        _documents = documents,
+        super(const VetChatState());
+
+  /// Build the system prompt with current pet health context.
+  String get _systemPrompt {
+    if (_pet == null) {
+      return VetSystemPrompt.build(petContext: 'No pet selected.');
+    }
+    final context = PetHealthContext.build(
+      pet: _pet,
+      biomarkers: _biomarkers,
+      medications: _medications,
+      healthAlerts: _healthAlerts,
+      medicalRecords: _medicalRecords,
+      walkSessions: _walkSessions,
+      documents: _documents,
+    );
+    return VetSystemPrompt.build(petContext: context);
+  }
+
+  /// Build the messages list in Anthropic API format from chat history.
+  List<Map<String, dynamic>> get _conversationHistory {
+    return state.messages
+        .map((m) => {'role': m.role, 'content': m.content})
+        .toList();
+  }
+
+  /// Send a user message and get a response from Dr. Layla.
+  Future<void> sendMessage(String text) async {
+    if (text.trim().isEmpty) return;
+
+    // Add user message
+    final userMsg = ChatMessage(
+      id: _uuid.v4(),
+      role: 'user',
+      content: text.trim(),
+      timestamp: DateTime.now(),
+    );
+
+    state = state.copyWith(
+      messages: [...state.messages, userMsg],
+      isLoading: true,
+      errorMessage: null,
+    );
+
+    try {
+      final history = _conversationHistory;
+      final reply = await _claudeService.sendMessage(
+        messages: history,
+        systemPrompt: _systemPrompt,
+      );
+
+      final assistantMsg = ChatMessage(
+        id: _uuid.v4(),
+        role: 'assistant',
+        content: reply,
+        timestamp: DateTime.now(),
+      );
+
+      state = state.copyWith(
+        messages: [...state.messages, assistantMsg],
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  /// Send a user message with an attached image (base64).
+  Future<void> sendMessageWithImage(String text, String imageBase64) async {
+    final userMsg = ChatMessage(
+      id: _uuid.v4(),
+      role: 'user',
+      content: text.trim().isEmpty ? 'What do you see in this image?' : text.trim(),
+      timestamp: DateTime.now(),
+    );
+
+    state = state.copyWith(
+      messages: [...state.messages, userMsg],
+      isLoading: true,
+      errorMessage: null,
+    );
+
+    try {
+      final history = _conversationHistory;
+      final reply = await _claudeService.sendMessageWithVision(
+        messages: history,
+        imageBase64: imageBase64,
+        systemPrompt: _systemPrompt,
+      );
+
+      final assistantMsg = ChatMessage(
+        id: _uuid.v4(),
+        role: 'assistant',
+        content: reply,
+        timestamp: DateTime.now(),
+      );
+
+      state = state.copyWith(
+        messages: [...state.messages, assistantMsg],
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  /// Retry the last failed message.
+  void retryLast() {
+    if (state.messages.isEmpty) return;
+    final last = state.messages.last;
+    if (last.role == 'user') {
+      // Remove the last user message and re-send
+      final msgs = List<ChatMessage>.from(state.messages)..removeLast();
+      state = state.copyWith(messages: msgs, errorMessage: null);
+      sendMessage(last.content);
+    }
+  }
+
+  /// Clear all messages.
+  void clearChat() {
+    state = const VetChatState();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Providers
+// ---------------------------------------------------------------------------
+
+/// Provider for the ClaudeProxyService, constructed from SDK config.
+final claudeProxyServiceProvider = Provider<ClaudeProxyService>((ref) {
+  final config = ref.watch(configProvider);
+  return ClaudeProxyService(config);
+});
+
+/// Provider for the vet chat notifier. Depends on the selected pet and health data.
+final vetChatProvider =
+    StateNotifierProvider<VetChatNotifier, VetChatState>((ref) {
+  final claudeService = ref.watch(claudeProxyServiceProvider);
+  final pet = ref.watch(selectedPetProvider);
+
+  // Load health data if pet is available
+  List<Biomarker> biomarkers = [];
+  List<Medication> medications = [];
+  List<HealthAlert> healthAlerts = [];
+  List<MedicalRecord> medicalRecords = [];
+  List<WalkSession> walkSessions = [];
+  List<PetDocument> documents = [];
+
+  if (pet != null) {
+    biomarkers =
+        ref.watch(biomarkersProvider(pet.id)).valueOrNull ?? [];
+    medications =
+        ref.watch(medicationsProvider(pet.id)).valueOrNull ?? [];
+    healthAlerts =
+        ref.watch(healthAlertsProvider(pet.id)).valueOrNull ?? [];
+    medicalRecords =
+        ref.watch(medicalRecordsProvider(pet.id)).valueOrNull ?? [];
+    walkSessions =
+        ref.watch(walkSessionsProvider(pet.id)).valueOrNull ?? [];
+    documents =
+        ref.watch(documentsProvider(pet.id)).valueOrNull ?? [];
+  }
+
+  return VetChatNotifier(
+    claudeService: claudeService,
+    pet: pet,
+    biomarkers: biomarkers,
+    medications: medications,
+    healthAlerts: healthAlerts,
+    medicalRecords: medicalRecords,
+    walkSessions: walkSessions,
+    documents: documents,
+  );
+});
