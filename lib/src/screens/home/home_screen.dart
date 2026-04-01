@@ -175,6 +175,51 @@ class HomeScreen extends ConsumerWidget {
 
             const SizedBox(height: WellxSpacing.xl),
 
+            // Quick access
+            Text(
+              'EXPLORE',
+              style: WellxTypography.sectionLabel.copyWith(
+                color: WellxColors.textSecondary,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: WellxSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: _ExploreCard(
+                    icon: Icons.place_rounded,
+                    label: 'Venues',
+                    color: WellxColors.bodyActivity,
+                    onTap: () => context.push('/venues'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _ExploreCard(
+                    icon: Icons.flight_rounded,
+                    label: 'Travel',
+                    color: WellxColors.wellnessDental,
+                    onTap: () => context.push('/travel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _ExploreCard(
+                    icon: Icons.medication_rounded,
+                    label: 'Meds',
+                    color: WellxColors.inflammation,
+                    onTap: () {
+                      final id = selectedPet?.id;
+                      if (id != null) context.push('/medications/$id');
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: WellxSpacing.xl),
+
             // Shelter impact section
             FureverImpactSection(
               coinsBalance: balance?.coinsBalance ?? 0,
@@ -451,5 +496,56 @@ class _DomainPillarCard extends StatelessWidget {
       default:
         return WellxColors.textTertiary;
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Explore Card
+// ---------------------------------------------------------------------------
+
+class _ExploreCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ExploreCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: WellxCard(
+        padding: const EdgeInsets.symmetric(
+          vertical: WellxSpacing.lg,
+          horizontal: WellxSpacing.md,
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: WellxSpacing.sm),
+            Text(
+              label,
+              style: WellxTypography.captionText.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

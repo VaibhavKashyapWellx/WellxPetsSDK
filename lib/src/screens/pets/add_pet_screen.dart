@@ -1,5 +1,10 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../models/pet.dart';
@@ -30,6 +35,8 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
   bool _isNeutered = false;
   DateTime? _dateOfBirth;
   bool _isSaving = false;
+  XFile? _pickedPhoto;
+  Uint8List? _photoBytes;
 
   @override
   void dispose() {
@@ -37,6 +44,45 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
     _breedController.dispose();
     _weightController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Camera'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+
+    final bytes = await picked.readAsBytes();
+    setState(() {
+      _pickedPhoto = picked;
+      _photoBytes = bytes;
+    });
   }
 
   Future<void> _pickDateOfBirth() async {
@@ -86,7 +132,17 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
         ownerId: auth.userId,
       );
 
-      await service.createPet(pet);
+      final created = await service.createPet(pet);
+
+      // Upload photo if one was picked
+      if (_photoBytes != null) {
+        try {
+          await service.uploadAndSetPhoto(created.id, _photoBytes!);
+        } catch (_) {
+          // Pet was created — photo upload failure is non-fatal
+        }
+      }
+
       ref.invalidate(petsProvider);
 
       if (mounted) Navigator.of(context).pop();
@@ -121,6 +177,43 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Pet photo
+              Center(
+                child: GestureDetector(
+                  onTap: _pickPhoto,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: WellxColors.flatCardFill,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: WellxColors.border, width: 2),
+                      image: _photoBytes != null
+                          ? DecorationImage(
+                              image: MemoryImage(_photoBytes!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: _photoBytes == null
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.camera_alt_rounded,
+                                  size: 32, color: WellxColors.textTertiary),
+                              const SizedBox(height: 4),
+                              Text('Add Photo',
+                                  style: WellxTypography.microLabel.copyWith(
+                                    color: WellxColors.textTertiary,
+                                  )),
+                            ],
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(height: WellxSpacing.xl),
+
               // Name
               WellxCard(
                 child: Column(

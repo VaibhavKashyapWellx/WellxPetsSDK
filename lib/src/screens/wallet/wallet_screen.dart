@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../models/health_models.dart';
 import '../../models/pet.dart';
 import '../../providers/credit_provider.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/pet_provider.dart';
+import '../../services/health_service.dart';
 import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
@@ -34,6 +37,73 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     'X-ray',
     'Other',
   ];
+
+  Future<void> _uploadDocument(
+      BuildContext context, WidgetRef ref, String? petId) async {
+    if (petId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a pet first')),
+      );
+      return;
+    }
+
+    final category = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Document Category',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            for (final cat in _docCategories.where((c) => c != 'All'))
+              ListTile(
+                title: Text(cat),
+                onTap: () => Navigator.pop(ctx, cat),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (category == null || !mounted) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 2048,
+      maxHeight: 2048,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+
+    try {
+      final healthService = ref.read(healthServiceProvider);
+      final doc = DocumentCreate(
+        id: const Uuid().v4(),
+        petId: petId,
+        title: picked.name.split('.').first,
+        date: DateTime.now().toIso8601String().split('T').first,
+        category: category,
+        fileType: picked.name.split('.').last,
+      );
+      await healthService.addDocument(doc);
+      ref.invalidate(documentsProvider(petId));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Document uploaded')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +178,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   petName: selectedPet?.name ?? 'Your Pet',
                   petEmoji: selectedPet?.speciesEmoji ?? '\u{1F415}',
                   docCount: documents.length,
+                  onUpload: () => _uploadDocument(context, ref, petId),
+                  onScan: () => context.push('/ocr-scan'),
                 ),
               ),
             ),
@@ -329,11 +401,15 @@ class _RecordsHeroCard extends StatelessWidget {
   final String petName;
   final String petEmoji;
   final int docCount;
+  final VoidCallback? onUpload;
+  final VoidCallback? onScan;
 
   const _RecordsHeroCard({
     required this.petName,
     required this.petEmoji,
     required this.docCount,
+    this.onUpload,
+    this.onScan,
   });
 
   @override
@@ -378,14 +454,14 @@ class _RecordsHeroCard extends StatelessWidget {
                 icon: Icons.upload_file,
                 label: 'Upload',
                 color: WellxColors.textPrimary,
-                onTap: () {},
+                onTap: onUpload ?? () {},
               ),
               const SizedBox(width: 10),
               _QuickActionButton(
                 icon: Icons.camera_alt,
                 label: 'Scan',
                 color: WellxColors.scoreGreen,
-                onTap: () {},
+                onTap: onScan ?? () {},
               ),
               const SizedBox(width: 10),
               _QuickActionButton(

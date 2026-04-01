@@ -20,6 +20,11 @@ import '../screens/credits/earn_coins_screen.dart';
 import '../screens/health/health_dashboard_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/settings/edit_profile_screen.dart';
+import '../screens/venues/venues_screen.dart';
+import '../screens/travel/travel_screen.dart';
+import '../screens/ocr/ocr_scan_screen.dart';
+import '../screens/pets/add_pet_screen.dart';
+import '../screens/medications/medications_screen.dart';
 
 /// Global navigation key for the router.
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -185,6 +190,59 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => const MaterialPage(
           fullscreenDialog: true,
           child: ShelterDogsListScreen(),
+        ),
+      ),
+
+      // Venues
+      GoRoute(
+        path: '/venues',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => const MaterialPage(
+          fullscreenDialog: true,
+          child: VenuesScreen(),
+        ),
+      ),
+
+      // Travel
+      GoRoute(
+        path: '/travel',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => const MaterialPage(
+          fullscreenDialog: true,
+          child: TravelScreen(),
+        ),
+      ),
+
+      // OCR Scan
+      GoRoute(
+        path: '/ocr-scan',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => const MaterialPage(
+          fullscreenDialog: true,
+          child: OcrScanScreen(),
+        ),
+      ),
+
+      // Medications
+      GoRoute(
+        path: '/medications/:petId',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final petId = state.pathParameters['petId']!;
+          return MaterialPage(
+            fullscreenDialog: true,
+            child: MedicationsScreen(petId: petId),
+          );
+        },
+      ),
+
+      // Add pet
+      GoRoute(
+        path: '/add-pet',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => const MaterialPage(
+          fullscreenDialog: true,
+          child: AddPetScreen(),
         ),
       ),
     ],

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../sdk/wellx_pets_config.dart';
@@ -37,14 +38,22 @@ class SupabaseManager {
     // Set initial session from host auth
     final authState = authDelegate.currentAuthState;
     if (authState.isAuthenticated && authState.accessToken != null) {
-      await manager.client.auth.setSession(authState.accessToken!);
+      try {
+        await manager.client.auth.setSession(authState.accessToken!);
+      } catch (e) {
+        debugPrint('[WellxPetsSDK] Could not set initial session: $e');
+      }
     }
 
     // Listen for auth state changes from host
     manager._authSubscription = authDelegate.authStateStream.listen(
       (state) async {
         if (state.isAuthenticated && state.accessToken != null) {
-          await manager.client.auth.setSession(state.accessToken!);
+          try {
+            await manager.client.auth.setSession(state.accessToken!);
+          } catch (e) {
+            debugPrint('[WellxPetsSDK] Could not update session: $e');
+          }
         }
       },
     );

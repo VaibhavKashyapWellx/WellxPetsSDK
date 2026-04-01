@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../models/pet.dart';
 import '../../providers/pet_provider.dart';
@@ -30,6 +33,7 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
   late bool _isNeutered;
   DateTime? _dateOfBirth;
   bool _isSaving = false;
+  Uint8List? _newPhotoBytes;
 
   @override
   void initState() {
@@ -53,6 +57,42 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
     _breedController.dispose();
     _weightController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Camera'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+
+    final bytes = await picked.readAsBytes();
+    setState(() => _newPhotoBytes = bytes);
   }
 
   Future<void> _pickDateOfBirth() async {
@@ -100,6 +140,15 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
       );
 
       await service.updatePet(widget.pet.id, update);
+
+      if (_newPhotoBytes != null) {
+        try {
+          await service.uploadAndSetPhoto(widget.pet.id, _newPhotoBytes!);
+        } catch (_) {
+          // Update succeeded — photo upload failure is non-fatal
+        }
+      }
+
       ref.invalidate(petsProvider);
 
       if (mounted) Navigator.of(context).pop(true);
@@ -135,6 +184,59 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Pet photo
+              Center(
+                child: GestureDetector(
+                  onTap: _pickPhoto,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: WellxColors.flatCardFill,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: WellxColors.border, width: 2),
+                      image: _newPhotoBytes != null
+                          ? DecorationImage(
+                              image: MemoryImage(_newPhotoBytes!),
+                              fit: BoxFit.cover,
+                            )
+                          : widget.pet.photoUrl != null
+                              ? DecorationImage(
+                                  image: NetworkImage(widget.pet.photoUrl!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                    ),
+                    child: (_newPhotoBytes == null && widget.pet.photoUrl == null)
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.camera_alt_rounded,
+                                  size: 32, color: WellxColors.textTertiary),
+                              const SizedBox(height: 4),
+                              Text('Add Photo',
+                                  style: WellxTypography.microLabel.copyWith(
+                                    color: WellxColors.textTertiary,
+                                  )),
+                            ],
+                          )
+                        : Align(
+                            alignment: Alignment.bottomRight,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: WellxColors.deepPurple,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit,
+                                  size: 14, color: Colors.white),
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: WellxSpacing.xl),
+
               // Name & Breed
               WellxCard(
                 child: Column(
