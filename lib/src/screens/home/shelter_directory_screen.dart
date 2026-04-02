@@ -115,8 +115,8 @@ class ShelterDirectoryScreen extends ConsumerWidget {
 
   Widget _communityPoolCard(CommunityPool pool) {
     return WellxCard(
-      backgroundColor: WellxColors.deepPurple.withOpacity(0.04),
-      borderColor: WellxColors.deepPurple.withOpacity(0.15),
+      backgroundColor: WellxColors.deepPurple.withValues(alpha: 0.04),
+      borderColor: WellxColors.deepPurple.withValues(alpha: 0.15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -194,7 +194,7 @@ class ShelterDirectoryScreen extends ConsumerWidget {
             child: LinearProgressIndicator(
               value: pool.progress,
               minHeight: 10,
-              backgroundColor: WellxColors.deepPurple.withOpacity(0.12),
+              backgroundColor: WellxColors.deepPurple.withValues(alpha: 0.12),
               valueColor:
                   const AlwaysStoppedAnimation<Color>(WellxColors.deepPurple),
             ),
@@ -359,12 +359,12 @@ class ShelterDirectoryScreen extends ConsumerWidget {
 
   Widget _shelterPlaceholder(ShelterProfile shelter) {
     return Container(
-      color: shelter.animalColor.withOpacity(0.08),
+      color: shelter.animalColor.withValues(alpha: 0.08),
       child: Center(
         child: Icon(
           shelter.animalIcon,
           size: 28,
-          color: shelter.animalColor.withOpacity(0.3),
+          color: shelter.animalColor.withValues(alpha: 0.3),
         ),
       ),
     );

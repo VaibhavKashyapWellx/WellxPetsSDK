@@ -60,7 +60,7 @@ class SettingsScreen extends ConsumerWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: WellxColors.coral.withOpacity(0.12),
+                        color: WellxColors.coral.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.notifications_active,
@@ -111,10 +111,10 @@ class SettingsScreen extends ConsumerWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                  color: WellxColors.coral.withOpacity(0.08),
+                  color: WellxColors.coral.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: WellxColors.coral.withOpacity(0.15),
+                    color: WellxColors.coral.withValues(alpha: 0.15),
                   ),
                 ),
                 child: Row(
@@ -150,7 +150,7 @@ class SettingsScreen extends ConsumerWidget {
                     Text(
                       'Delete Account',
                       style: WellxTypography.buttonLabel.copyWith(
-                        color: WellxColors.coral.withOpacity(0.7),
+                        color: WellxColors.coral.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -312,7 +312,7 @@ class _FeaturesCard extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 13, color: color),
@@ -385,7 +385,7 @@ class _LegalCard extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 13, color: color),

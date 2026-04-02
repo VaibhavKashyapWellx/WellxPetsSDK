@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/travel_models.dart';
@@ -5,6 +6,7 @@ import '../../providers/travel_provider.dart';
 import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
+import '../../widgets/wellx_loading_widget.dart';
 import 'destination_detail_screen.dart';
 import 'airline_comparison_screen.dart';
 
@@ -299,7 +301,7 @@ class TravelScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: status.color.withOpacity(0.12),
+              color: status.color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(status.icon, size: 20, color: status.color),
@@ -380,16 +382,14 @@ class TravelScreen extends ConsumerWidget {
           fit: StackFit.expand,
           children: [
             // Landscape photo background
-            Image.network(
-              _destinationImageUrl(dest.countryName),
+            CachedNetworkImage(
+              imageUrl: _destinationImageUrl(dest.countryName),
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              placeholder: (_, __) => Container(color: const Color(0xFF262830)),
+              errorWidget: (_, __, ___) => Container(
                 color: const Color(0xFF262830),
                 child: Center(
-                  child: Text(
-                    dest.flag,
-                    style: const TextStyle(fontSize: 60),
-                  ),
+                  child: Text(dest.flag, style: const TextStyle(fontSize: 60)),
                 ),
               ),
             ),
@@ -401,9 +401,9 @@ class TravelScreen extends ConsumerWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.05),
-                    Colors.black.withOpacity(0.35),
-                    Colors.black.withOpacity(0.85),
+                    Colors.black.withValues(alpha: 0.05),
+                    Colors.black.withValues(alpha: 0.35),
+                    Colors.black.withValues(alpha: 0.85),
                   ],
                 ),
               ),
@@ -464,7 +464,7 @@ class TravelScreen extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                         ),
                       ),
                       if (dest.isQuarantineRequired) ...[
@@ -473,7 +473,7 @@ class TravelScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 5, vertical: 2),
                           decoration: BoxDecoration(
-                            color: WellxColors.coral.withOpacity(0.8),
+                            color: WellxColors.coral.withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(

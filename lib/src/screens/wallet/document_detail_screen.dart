@@ -79,13 +79,13 @@ class DocumentDetailScreen extends ConsumerWidget {
                     Icon(
                       Icons.description,
                       size: 48,
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha: 0.3),
                     ),
                     const SizedBox(height: WellxSpacing.md),
                     Text(
                       'Document Preview',
                       style: WellxTypography.captionText.copyWith(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                       ),
                     ),
                   ],

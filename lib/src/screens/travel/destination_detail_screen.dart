@@ -306,7 +306,7 @@ class DestinationDetailScreen extends ConsumerWidget {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: WellxColors.coral.withOpacity(0.1),
+              color: WellxColors.coral.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(

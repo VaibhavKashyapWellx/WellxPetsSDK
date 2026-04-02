@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../providers/pet_provider.dart';
 import '../../providers/vet_chat_provider.dart';
@@ -10,9 +12,7 @@ import '../../theme/wellx_typography.dart';
 
 /// Full Dr. Layla AI vet chat interface.
 class VetChatScreen extends ConsumerStatefulWidget {
-  /// Optional initial prompt to auto-send on open (e.g., from a "Talk to Layla" button).
   final String? initialPrompt;
-
   const VetChatScreen({super.key, this.initialPrompt});
 
   @override
@@ -23,7 +23,9 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final _focusNode = FocusNode();
+  final _imagePicker = ImagePicker();
   bool _didSendInitial = false;
+  File? _pendingImage;
 
   @override
   void dispose() {
@@ -47,15 +49,54 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
 
   void _sendMessage() {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    final image = _pendingImage;
+    if (text.isEmpty && image == null) return;
     _controller.clear();
-    ref.read(vetChatProvider.notifier).sendMessage(text);
+    setState(() => _pendingImage = null);
+    ref.read(vetChatProvider.notifier).sendMessage(
+          text,
+          imageFile: image,
+        );
     _scrollToBottom();
   }
 
   void _sendChip(String text) {
     ref.read(vetChatProvider.notifier).sendMessage(text);
     _scrollToBottom();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final xfile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 80,
+      );
+      if (xfile != null && mounted) {
+        // File size check — max 10 MB
+        final file = File(xfile.path);
+        final bytes = await file.length();
+        if (bytes > 10 * 1024 * 1024) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    'Image is too large. Please choose a photo under 10 MB.'),
+              ),
+            );
+          }
+          return;
+        }
+        setState(() => _pendingImage = file);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open photo library.')),
+        );
+      }
+    }
   }
 
   @override
@@ -73,10 +114,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
       });
     }
 
-    // Scroll to bottom when messages change
-    if (chatState.messages.isNotEmpty) {
-      _scrollToBottom();
-    }
+    if (chatState.messages.isNotEmpty) _scrollToBottom();
 
     return Scaffold(
       backgroundColor: WellxColors.background,
@@ -93,6 +131,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
           ),
           if (chatState.errorMessage != null)
             _buildErrorBanner(chatState.errorMessage!),
+          if (_pendingImage != null) _buildImagePreview(),
           _buildInputBar(chatState.isLoading),
         ],
       ),
@@ -109,11 +148,18 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
       title: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: WellxColors.primaryGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: WellxColors.deepPurple.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: const Icon(
               Icons.medical_services_rounded,
@@ -132,6 +178,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                     style: WellxTypography.cardTitle.copyWith(fontSize: 16),
                   ),
                   const SizedBox(width: 6),
+                  // Online indicator
                   Container(
                     width: 8,
                     height: 8,
@@ -147,7 +194,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                   'Reviewing $petName\'s records',
                   style: WellxTypography.captionText.copyWith(
                     color: WellxColors.textTertiary,
-                    fontSize: 12,
+                    fontSize: 11,
                   ),
                 ),
             ],
@@ -159,7 +206,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 20),
             color: WellxColors.textTertiary,
-            onPressed: () => _showClearDialog(),
+            onPressed: _showClearDialog,
           ),
       ],
     );
@@ -171,8 +218,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Clear Chat History'),
         content: const Text(
-          'This will remove all messages in this conversation.',
-        ),
+            'This will remove all messages in this conversation.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -183,17 +229,15 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
               ref.read(vetChatProvider.notifier).clearChat();
               Navigator.pop(ctx);
             },
-            child: Text(
-              'Clear',
-              style: TextStyle(color: WellxColors.alertRed),
-            ),
+            child: Text('Clear',
+                style: TextStyle(color: WellxColors.alertRed)),
           ),
         ],
       ),
     );
   }
 
-  // ── Empty State (starter prompts) ────────────────────────────────────────
+  // ── Empty State ───────────────────────────────────────────────────────────
 
   Widget _buildEmptyState(String petName) {
     return SingleChildScrollView(
@@ -201,17 +245,16 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
       child: Column(
         children: [
           const SizedBox(height: WellxSpacing.xl),
-          // Avatar
           Container(
-            width: 80,
-            height: 80,
+            width: 88,
+            height: 88,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: WellxColors.primaryGradient,
               boxShadow: [
                 BoxShadow(
-                  color: WellxColors.deepPurple.withOpacity(0.25),
-                  blurRadius: 20,
+                  color: WellxColors.deepPurple.withValues(alpha: 0.3),
+                  blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
               ],
@@ -219,7 +262,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
             child: const Icon(
               Icons.medical_services_rounded,
               color: Colors.white,
-              size: 36,
+              size: 38,
             ),
           ),
           const SizedBox(height: WellxSpacing.lg),
@@ -231,18 +274,24 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
               color: WellxColors.textTertiary,
             ),
           ),
-          const SizedBox(height: WellxSpacing.sm),
-          Text(
-            'Not a replacement for a vet. A well-informed first opinion available 24/7.',
-            textAlign: TextAlign.center,
-            style: WellxTypography.captionText.copyWith(
-              color: WellxColors.textTertiary,
-              fontSize: 12,
+          const SizedBox(height: WellxSpacing.xs),
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: WellxSpacing.lg, vertical: WellxSpacing.sm),
+            decoration: BoxDecoration(
+              color: WellxColors.amberWatch.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'Not a replacement for a vet. A well-informed first opinion available 24/7.',
+              textAlign: TextAlign.center,
+              style: WellxTypography.captionText.copyWith(
+                color: WellxColors.amberWatch,
+                fontSize: 11,
+              ),
             ),
           ),
           const SizedBox(height: WellxSpacing.xxl),
-
-          // Symptom chips
           _buildChipSection('SYMPTOMS', [
             "He's limping",
             "She's not eating",
@@ -252,8 +301,6 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
             "Itching a lot",
           ]),
           const SizedBox(height: WellxSpacing.lg),
-
-          // Management chips
           _buildChipSection('QUESTIONS', [
             'What should I feed my dog?',
             'Is this symptom concerning?',
@@ -261,6 +308,56 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
             'Review blood work results',
             'Exercise advice',
           ]),
+          const SizedBox(height: WellxSpacing.lg),
+          // Photo prompt
+          GestureDetector(
+            onTap: _pickImage,
+            child: Container(
+              padding: const EdgeInsets.all(WellxSpacing.lg),
+              decoration: BoxDecoration(
+                color: WellxColors.cardSurface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: WellxColors.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: WellxColors.deepPurple.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add_photo_alternate_rounded,
+                        color: WellxColors.deepPurple, size: 20),
+                  ),
+                  const SizedBox(width: WellxSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Share a Photo',
+                          style: WellxTypography.chipText.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Show Dr. Layla a rash, wound, or symptom',
+                          style: WellxTypography.captionText.copyWith(
+                            color: WellxColors.textTertiary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right,
+                      size: 18, color: WellxColors.textTertiary),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -293,9 +390,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                 decoration: BoxDecoration(
                   color: WellxColors.cardSurface,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: WellxColors.border,
-                  ),
+                  border: Border.all(color: WellxColors.border),
                 ),
                 child: Text(
                   chip,
@@ -325,8 +420,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
         if (index == chatState.messages.length && chatState.isLoading) {
           return _buildTypingIndicator();
         }
-        final message = chatState.messages[index];
-        return _buildMessageBubble(message);
+        return _buildMessageBubble(chatState.messages[index]);
       },
     );
   }
@@ -339,7 +433,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
       child: Row(
         mainAxisAlignment:
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isUser) ...[
             Container(
@@ -358,79 +452,103 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
             const SizedBox(width: WellxSpacing.sm),
           ],
           Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: isUser ? WellxColors.deepPurple : WellxColors.cardSurface,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isUser ? 18 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 18),
-                ),
-                border: isUser
-                    ? null
-                    : Border.all(color: WellxColors.border, width: 0.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: isUser
-                  ? Text(
-                      message.content,
-                      style: WellxTypography.bodyText.copyWith(
-                        color: Colors.white,
-                      ),
-                    )
-                  : MarkdownBody(
-                      data: message.content,
-                      styleSheet: MarkdownStyleSheet(
-                        p: WellxTypography.bodyText.copyWith(
-                          color: WellxColors.textPrimary,
-                          height: 1.5,
-                        ),
-                        strong: WellxTypography.bodyText.copyWith(
-                          color: WellxColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        listBullet: WellxTypography.bodyText.copyWith(
-                          color: WellxColors.textSecondary,
-                        ),
-                        h1: WellxTypography.heading.copyWith(fontSize: 18),
-                        h2: WellxTypography.heading.copyWith(fontSize: 16),
-                        h3: WellxTypography.heading.copyWith(fontSize: 14),
-                        code: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 13,
-                          color: WellxColors.deepPurple,
-                          backgroundColor: WellxColors.flatCardFill,
-                        ),
-                        blockquotePadding: const EdgeInsets.only(left: 12),
-                        blockquoteDecoration: BoxDecoration(
-                          border: Border(
-                            left: BorderSide(
-                              color: WellxColors.deepPurple.withOpacity(0.3),
-                              width: 3,
-                            ),
-                          ),
-                        ),
+            child: Column(
+              crossAxisAlignment:
+                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                // Image bubble (if message has an attached image path)
+                if (message.imagePath != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.file(
+                        File(message.imagePath!),
+                        width: 200,
+                        height: 140,
+                        fit: BoxFit.cover,
                       ),
                     ),
+                  ),
+                if (message.content.isNotEmpty)
+                  Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.75,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isUser
+                          ? WellxColors.deepPurple
+                          : WellxColors.cardSurface,
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(18),
+                        topRight: const Radius.circular(18),
+                        bottomLeft: Radius.circular(isUser ? 18 : 4),
+                        bottomRight: Radius.circular(isUser ? 4 : 18),
+                      ),
+                      border: isUser
+                          ? null
+                          : Border.all(
+                              color: WellxColors.border, width: 0.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: isUser
+                        ? Text(
+                            message.content,
+                            style: WellxTypography.bodyText.copyWith(
+                              color: Colors.white,
+                            ),
+                          )
+                        : MarkdownBody(
+                            data: message.content,
+                            styleSheet: MarkdownStyleSheet(
+                              p: WellxTypography.bodyText.copyWith(
+                                color: WellxColors.textPrimary,
+                                height: 1.5,
+                              ),
+                              strong: WellxTypography.bodyText.copyWith(
+                                color: WellxColors.textPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              listBullet: WellxTypography.bodyText.copyWith(
+                                color: WellxColors.textSecondary,
+                              ),
+                              h1: WellxTypography.heading.copyWith(fontSize: 18),
+                              h2: WellxTypography.heading.copyWith(fontSize: 16),
+                              h3: WellxTypography.heading.copyWith(fontSize: 14),
+                              code: TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 13,
+                                color: WellxColors.deepPurple,
+                                backgroundColor: WellxColors.flatCardFill,
+                              ),
+                              blockquotePadding:
+                                  const EdgeInsets.only(left: 12),
+                              blockquoteDecoration: BoxDecoration(
+                                border: Border(
+                                  left: BorderSide(
+                                    color: WellxColors.deepPurple
+                                        .withValues(alpha: 0.3),
+                                    width: 3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
+              ],
             ),
           ),
-          if (isUser) ...[
-            const SizedBox(width: WellxSpacing.sm),
-          ],
+          if (isUser) const SizedBox(width: WellxSpacing.sm),
         ],
       ),
     );
@@ -442,7 +560,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: WellxSpacing.md),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Container(
             width: 30,
@@ -459,7 +577,8 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
           ),
           const SizedBox(width: WellxSpacing.sm),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: WellxColors.cardSurface,
               borderRadius: const BorderRadius.only(
@@ -470,7 +589,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
               ),
               border: Border.all(color: WellxColors.border, width: 0.5),
             ),
-            child: const _PulsingDots(),
+            child: const _TypingDots(),
           ),
         ],
       ),
@@ -487,7 +606,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
       ),
       padding: const EdgeInsets.all(WellxSpacing.md),
       decoration: BoxDecoration(
-        color: WellxColors.alertRed.withOpacity(0.08),
+        color: WellxColors.alertRed.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -519,6 +638,61 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
     );
   }
 
+  // ── Pending image preview ─────────────────────────────────────────────────
+
+  Widget _buildImagePreview() {
+    return Container(
+      height: 80,
+      padding: const EdgeInsets.symmetric(
+          horizontal: WellxSpacing.md, vertical: WellxSpacing.sm),
+      decoration: BoxDecoration(
+        color: WellxColors.cardSurface,
+        border: Border(top: BorderSide(color: WellxColors.border, width: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(
+                  _pendingImage!,
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                top: -4,
+                right: -4,
+                child: GestureDetector(
+                  onTap: () => setState(() => _pendingImage = null),
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: WellxColors.textPrimary,
+                    ),
+                    child: const Icon(Icons.close,
+                        size: 12, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: WellxSpacing.md),
+          Text(
+            'Photo attached',
+            style: WellxTypography.captionText.copyWith(
+              color: WellxColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Input Bar ────────────────────────────────────────────────────────────
 
   Widget _buildInputBar(bool isLoading) {
@@ -538,6 +712,27 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
           ),
           child: Row(
             children: [
+              // Camera button
+              GestureDetector(
+                onTap: isLoading ? null : _pickImage,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: WellxColors.flatCardFill,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: WellxColors.border),
+                  ),
+                  child: Icon(
+                    Icons.add_photo_alternate_rounded,
+                    size: 18,
+                    color: isLoading
+                        ? WellxColors.textTertiary
+                        : WellxColors.deepPurple,
+                  ),
+                ),
+              ),
+              const SizedBox(width: WellxSpacing.sm),
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
@@ -599,19 +794,20 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// Pulsing Dots (typing indicator animation)
+// Typing Dots Animation
 // ---------------------------------------------------------------------------
 
-class _PulsingDots extends StatefulWidget {
-  const _PulsingDots();
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
 
   @override
-  State<_PulsingDots> createState() => _PulsingDotsState();
+  State<_TypingDots> createState() => _TypingDotsState();
 }
 
-class _PulsingDotsState extends State<_PulsingDots>
+class _TypingDotsState extends State<_TypingDots>
     with TickerProviderStateMixin {
   late final List<AnimationController> _controllers;
+  late final List<Animation<double>> _anims;
 
   @override
   void initState() {
@@ -619,13 +815,17 @@ class _PulsingDotsState extends State<_PulsingDots>
     _controllers = List.generate(3, (i) {
       return AnimationController(
         vsync: this,
-        duration: const Duration(milliseconds: 600),
-      )..repeat(reverse: true);
+        duration: const Duration(milliseconds: 500),
+      );
     });
-    // Stagger the animations
-    for (int i = 0; i < _controllers.length; i++) {
-      Future.delayed(Duration(milliseconds: i * 200), () {
-        if (mounted) _controllers[i].forward();
+    _anims = _controllers
+        .map((c) => CurvedAnimation(parent: c, curve: Curves.easeInOut))
+        .toList();
+
+    // Stagger starts
+    for (int i = 0; i < 3; i++) {
+      Future.delayed(Duration(milliseconds: i * 160), () {
+        if (mounted) _controllers[i].repeat(reverse: true);
       });
     }
   }
@@ -644,16 +844,16 @@ class _PulsingDotsState extends State<_PulsingDots>
       mainAxisSize: MainAxisSize.min,
       children: List.generate(3, (i) {
         return AnimatedBuilder(
-          animation: _controllers[i],
+          animation: _anims[i],
           builder: (_, __) {
             return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              width: 8,
-              height: 8,
+              margin: const EdgeInsets.symmetric(horizontal: 2.5),
+              width: 7,
+              height: 7,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: WellxColors.deepPurple
-                    .withOpacity(0.3 + 0.5 * _controllers[i].value),
+                    .withValues(alpha: 0.25 + 0.6 * _anims[i].value),
               ),
             );
           },

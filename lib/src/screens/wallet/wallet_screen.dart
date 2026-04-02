@@ -95,7 +95,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: WellxColors.deepPurple.withOpacity(0.1),
+                  color: WellxColors.deepPurple.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.camera_alt_rounded,
@@ -110,7 +110,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: WellxColors.scoreBlue.withOpacity(0.1),
+                  color: WellxColors.scoreBlue.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.photo_library_rounded,
@@ -436,8 +436,8 @@ class _PetSwitcher extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isSelected
-                            ? Colors.white.withOpacity(0.25)
-                            : WellxColors.textPrimary.withOpacity(0.08),
+                            ? Colors.white.withValues(alpha: 0.25)
+                            : WellxColors.textPrimary.withValues(alpha: 0.08),
                       ),
                       child: Icon(
                         (pet.species ?? 'dog').toLowerCase() == 'cat'
@@ -586,7 +586,7 @@ class _QuickActionButton extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 17, color: color),
@@ -860,7 +860,7 @@ class _DocumentTile extends StatelessWidget {
                       child: Icon(
                         _categoryIcon(doc.category),
                         size: 22,
-                        color: Colors.white.withOpacity(0.4),
+                        color: Colors.white.withValues(alpha: 0.4),
                       ),
                     ),
                   ),
@@ -1016,7 +1016,7 @@ class _CoinsBalanceCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: WellxColors.amberWatch.withOpacity(0.12),
+                color: WellxColors.amberWatch.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.star,

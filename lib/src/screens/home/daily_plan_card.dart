@@ -152,7 +152,7 @@ class _DailyPlanCardState extends State<DailyPlanCard> {
                           : 0,
                       strokeWidth: 3,
                       backgroundColor:
-                          WellxColors.textPrimary.withOpacity(0.06),
+                          WellxColors.textPrimary.withValues(alpha: 0.06),
                       valueColor: const AlwaysStoppedAnimation(
                         WellxColors.scoreGreen,
                       ),
@@ -183,7 +183,7 @@ class _DailyPlanCardState extends State<DailyPlanCard> {
                   ? _completedCount / _completableCount
                   : 0,
               minHeight: 4,
-              backgroundColor: WellxColors.textPrimary.withOpacity(0.06),
+              backgroundColor: WellxColors.textPrimary.withValues(alpha: 0.06),
               valueColor: const AlwaysStoppedAnimation(
                 WellxColors.scoreGreen,
               ),
@@ -225,8 +225,8 @@ class _DailyPlanCardState extends State<DailyPlanCard> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: _allDone
-                  ? WellxColors.scoreGreen.withOpacity(0.08)
-                  : WellxColors.textPrimary.withOpacity(0.03),
+                  ? WellxColors.scoreGreen.withValues(alpha: 0.08)
+                  : WellxColors.textPrimary.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -301,8 +301,8 @@ class _TaskRow extends StatelessWidget {
                     width: 2,
                     height: 10,
                     color: isCompleted
-                        ? WellxColors.scoreGreen.withOpacity(0.3)
-                        : WellxColors.textPrimary.withOpacity(0.08),
+                        ? WellxColors.scoreGreen.withValues(alpha: 0.3)
+                        : WellxColors.textPrimary.withValues(alpha: 0.08),
                   )
                 else
                   const SizedBox(height: 10),
@@ -316,7 +316,7 @@ class _TaskRow extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: WellxColors.textTertiary.withOpacity(0.3),
+                        color: WellxColors.textTertiary.withValues(alpha: 0.3),
                         width: 1.5,
                       ),
                     ),
@@ -328,8 +328,8 @@ class _TaskRow extends StatelessWidget {
                     width: 2,
                     height: 10,
                     color: isCompleted
-                        ? WellxColors.scoreGreen.withOpacity(0.3)
-                        : WellxColors.textPrimary.withOpacity(0.08),
+                        ? WellxColors.scoreGreen.withValues(alpha: 0.3)
+                        : WellxColors.textPrimary.withValues(alpha: 0.08),
                   )
                 else
                   const SizedBox(height: 10),

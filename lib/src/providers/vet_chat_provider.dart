@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -21,6 +23,8 @@ class ChatMessage {
   final String content;
   final DateTime timestamp;
   final bool isStreaming;
+  /// Local file path of an attached image (user messages only).
+  final String? imagePath;
 
   const ChatMessage({
     required this.id,
@@ -28,11 +32,13 @@ class ChatMessage {
     required this.content,
     required this.timestamp,
     this.isStreaming = false,
+    this.imagePath,
   });
 
   ChatMessage copyWith({
     String? content,
     bool? isStreaming,
+    String? imagePath,
   }) {
     return ChatMessage(
       id: id,
@@ -40,6 +46,7 @@ class ChatMessage {
       content: content ?? this.content,
       timestamp: timestamp,
       isStreaming: isStreaming ?? this.isStreaming,
+      imagePath: imagePath ?? this.imagePath,
     );
   }
 }
@@ -125,15 +132,20 @@ class VetChatNotifier extends StateNotifier<VetChatState> {
   }
 
   /// Send a user message and get a response from Dr. Layla.
-  Future<void> sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
+  /// Optionally attach an image [imageFile] which is sent via vision API.
+  Future<void> sendMessage(String text, {File? imageFile}) async {
+    final hasImage = imageFile != null;
+    final messageText = text.trim().isEmpty && hasImage
+        ? 'What do you see in this image?'
+        : text.trim();
+    if (messageText.isEmpty) return;
 
-    // Add user message
     final userMsg = ChatMessage(
       id: _uuid.v4(),
       role: 'user',
-      content: text.trim(),
+      content: messageText,
       timestamp: DateTime.now(),
+      imagePath: imageFile?.path,
     );
 
     state = state.copyWith(
@@ -144,10 +156,21 @@ class VetChatNotifier extends StateNotifier<VetChatState> {
 
     try {
       final history = _conversationHistory;
-      final reply = await _claudeService.sendMessage(
-        messages: history,
-        systemPrompt: _systemPrompt,
-      );
+      String reply;
+      if (hasImage) {
+        final bytes = await imageFile.readAsBytes();
+        final base64Image = base64Encode(bytes);
+        reply = await _claudeService.sendMessageWithVision(
+          messages: history,
+          imageBase64: base64Image,
+          systemPrompt: _systemPrompt,
+        );
+      } else {
+        reply = await _claudeService.sendMessage(
+          messages: history,
+          systemPrompt: _systemPrompt,
+        );
+      }
 
       final assistantMsg = ChatMessage(
         id: _uuid.v4(),
@@ -163,49 +186,7 @@ class VetChatNotifier extends StateNotifier<VetChatState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString(),
-      );
-    }
-  }
-
-  /// Send a user message with an attached image (base64).
-  Future<void> sendMessageWithImage(String text, String imageBase64) async {
-    final userMsg = ChatMessage(
-      id: _uuid.v4(),
-      role: 'user',
-      content: text.trim().isEmpty ? 'What do you see in this image?' : text.trim(),
-      timestamp: DateTime.now(),
-    );
-
-    state = state.copyWith(
-      messages: [...state.messages, userMsg],
-      isLoading: true,
-      errorMessage: null,
-    );
-
-    try {
-      final history = _conversationHistory;
-      final reply = await _claudeService.sendMessageWithVision(
-        messages: history,
-        imageBase64: imageBase64,
-        systemPrompt: _systemPrompt,
-      );
-
-      final assistantMsg = ChatMessage(
-        id: _uuid.v4(),
-        role: 'assistant',
-        content: reply,
-        timestamp: DateTime.now(),
-      );
-
-      state = state.copyWith(
-        messages: [...state.messages, assistantMsg],
-        isLoading: false,
-      );
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
+        errorMessage: 'Dr. Layla couldn\'t respond. Please try again.',
       );
     }
   }

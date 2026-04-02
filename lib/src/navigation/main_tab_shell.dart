@@ -87,7 +87,7 @@ class _FloatingTabBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: WellxColors.inkPrimary.withOpacity(0.3),
+              color: WellxColors.inkPrimary.withValues(alpha: 0.3),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -145,7 +145,7 @@ class _TabButton extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? Colors.white : Colors.white.withOpacity(0.4),
+              color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.4),
               size: 24,
             ),
             const SizedBox(height: 2),
@@ -154,7 +154,7 @@ class _TabButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : Colors.white.withOpacity(0.4),
+                color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.4),
               ),
             ),
           ],
@@ -192,11 +192,11 @@ class _CenterTabButton extends StatelessWidget {
                   colors: [WellxColors.midPurple, WellxColors.deepPurple],
                 )
               : null,
-          color: isSelected ? null : Colors.white.withOpacity(0.15),
+          color: isSelected ? null : Colors.white.withValues(alpha: 0.15),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: WellxColors.deepPurple.withOpacity(0.4),
+                    color: WellxColors.deepPurple.withValues(alpha: 0.4),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),

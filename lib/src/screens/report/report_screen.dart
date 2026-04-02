@@ -20,7 +20,26 @@ import '../health/biomarker_arc_gauge.dart';
 // PDF Export
 // ---------------------------------------------------------------------------
 
-/// Generate and share a health report PDF for the given pet.
+// WellX brand colors for PDF
+const _pdfNavy = PdfColor.fromInt(0xFF1A1A2E);
+const _pdfPurple = PdfColor.fromInt(0xFF4D33B3);
+const _pdfTeal = PdfColor.fromInt(0xFF00BFA6);
+const _pdfLightGrey = PdfColor.fromInt(0xFFF5F4FA);
+const _pdfBorder = PdfColor.fromInt(0xFFE8E6F0);
+
+PdfColor _pillarBarColor(int score) {
+  if (score >= 75) return const PdfColor.fromInt(0xFF409959);
+  if (score >= 50) return const PdfColor.fromInt(0xFFD98C33);
+  return const PdfColor.fromInt(0xFFCC4033);
+}
+
+PdfColor _statusColor(String status) {
+  if (status == 'high') return const PdfColor.fromInt(0xFFE65A4D);
+  if (status == 'low') return const PdfColor.fromInt(0xFFD9A633);
+  return const PdfColor.fromInt(0xFF4DA659);
+}
+
+/// Generate and share a WellX branded health report PDF.
 Future<void> _exportHealthReport({
   required BuildContext context,
   required Pet? pet,
@@ -34,134 +53,404 @@ Future<void> _exportHealthReport({
     final now = DateTime.now();
     final dateStr =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-    final watchMarkers = biomarkers
-        .where((b) => b.status == 'high' || b.status == 'low')
-        .toList();
+    final watchMarkers =
+        biomarkers.where((b) => b.status == 'high' || b.status == 'low').toList();
 
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(40),
-        header: (_) => pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text(
-              'WellX Pet Health Report',
-              style: pw.TextStyle(
-                  fontSize: 22, fontWeight: pw.FontWeight.bold),
-            ),
-            pw.Text(
-              'Generated $dateStr',
-              style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600),
-            ),
-            pw.Divider(),
-          ],
-        ),
-        build: (_) => [
-          // Pet info
-          if (pet != null) ...[
-            pw.Text('PET INFORMATION',
-                style: pw.TextStyle(
-                    fontSize: 13,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.purple900)),
-            pw.SizedBox(height: 6),
-            pw.Text('Name: ${pet.name}'),
-            if (pet.breed != null) pw.Text('Breed: ${pet.breed}'),
-            if (pet.species != null)
-              pw.Text('Species: ${pet.species!.toUpperCase()}'),
-            if (pet.weight != null)
-              pw.Text('Weight: ${pet.weight!.toStringAsFixed(1)} kg'),
-            pw.SizedBox(height: 16),
-          ],
-
-          // Health score
-          if (score != null) ...[
-            pw.Text('HEALTH SCORE',
-                style: pw.TextStyle(
-                    fontSize: 13,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.purple900)),
-            pw.SizedBox(height: 6),
-            pw.Text(
-              'Overall Score: ${score.overall} / 100',
-              style: pw.TextStyle(
-                  fontSize: 16, fontWeight: pw.FontWeight.bold),
-            ),
-            pw.SizedBox(height: 8),
-            ...score.pillars.map(
-              (p) => pw.Padding(
-                padding: const pw.EdgeInsets.only(bottom: 4),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+        // ── Branded header ────────────────────────────────────────────────
+        header: (_) => pw.Container(
+          margin: const pw.EdgeInsets.only(bottom: 20),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Logo bar
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 10),
+                decoration: pw.BoxDecoration(
+                  color: _pdfNavy,
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
                 child: pw.Row(
                   children: [
-                    pw.SizedBox(
-                      width: 160,
-                      child: pw.Text(p.name,
-                          style: const pw.TextStyle(fontSize: 11)),
+                    pw.Container(
+                      width: 24,
+                      height: 24,
+                      decoration: pw.BoxDecoration(
+                        color: _pdfTeal,
+                        shape: pw.BoxShape.circle,
+                      ),
                     ),
-                    pw.Text('${p.score}/100',
-                        style: pw.TextStyle(
-                            fontSize: 11,
-                            fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(width: 10),
+                    pw.Text(
+                      'WellX',
+                      style: pw.TextStyle(
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.white,
+                      ),
+                    ),
+                    pw.Spacer(),
+                    pw.Text(
+                      'Pet Health Report',
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        color: PdfColors.white,
+                      ),
+                    ),
                   ],
                 ),
               ),
+              pw.SizedBox(height: 8),
+              pw.Row(
+                children: [
+                  pw.Text(
+                    pet != null ? '${pet.name}\'s Health Summary' : 'Health Summary',
+                    style: pw.TextStyle(
+                      fontSize: 13,
+                      fontWeight: pw.FontWeight.bold,
+                      color: _pdfNavy,
+                    ),
+                  ),
+                  pw.Spacer(),
+                  pw.Text(
+                    'Generated $dateStr',
+                    style: const pw.TextStyle(
+                      fontSize: 10,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                ],
+              ),
+              pw.Divider(color: _pdfBorder, height: 12),
+            ],
+          ),
+        ),
+        // ── Footer ────────────────────────────────────────────────────────
+        footer: (ctx) => pw.Column(
+          children: [
+            pw.Divider(color: _pdfBorder, height: 8),
+            pw.Row(
+              children: [
+                pw.Text(
+                  'WellX Pet Health Report — $dateStr',
+                  style: const pw.TextStyle(
+                    fontSize: 8,
+                    color: PdfColors.grey500,
+                  ),
+                ),
+                pw.Spacer(),
+                pw.Text(
+                  'Page ${ctx.pageNumber} of ${ctx.pagesCount}',
+                  style: const pw.TextStyle(
+                    fontSize: 8,
+                    color: PdfColors.grey500,
+                  ),
+                ),
+              ],
             ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              'This report is for informational purposes only and is not a substitute for professional veterinary advice.',
+              style: const pw.TextStyle(
+                fontSize: 7,
+                color: PdfColors.grey400,
+              ),
+              textAlign: pw.TextAlign.center,
+            ),
+          ],
+        ),
+        build: (_) => [
+          // ── Pet info card ───────────────────────────────────────────────
+          if (pet != null) ...[
+            _sectionHeader('PET INFORMATION', _pdfPurple),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(14),
+              decoration: pw.BoxDecoration(
+                color: _pdfLightGrey,
+                borderRadius: pw.BorderRadius.circular(8),
+                border: pw.Border.all(color: _pdfBorder),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  _infoRow('Name', pet.name),
+                  if (pet.breed != null) _infoRow('Breed', pet.breed!),
+                  if (pet.species != null)
+                    _infoRow('Species', pet.species!.toUpperCase()),
+                  if (pet.weight != null)
+                    _infoRow('Weight', '${pet.weight!.toStringAsFixed(1)} kg'),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 20),
+          ],
+
+          // ── Health score section ────────────────────────────────────────
+          if (score != null) ...[
+            _sectionHeader('HEALTH SCORE', _pdfPurple),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                color: _pdfNavy,
+                borderRadius: pw.BorderRadius.circular(10),
+              ),
+              child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  // Score circle
+                  pw.Stack(
+                    alignment: pw.Alignment.center,
+                    children: [
+                      pw.Container(
+                        width: 72,
+                        height: 72,
+                        decoration: pw.BoxDecoration(
+                          shape: pw.BoxShape.circle,
+                          border: pw.Border.all(
+                            color: _pdfTeal,
+                            width: 5,
+                          ),
+                        ),
+                      ),
+                      pw.Text(
+                        '${score.overall}',
+                        style: pw.TextStyle(
+                          fontSize: 26,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(width: 20),
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'Overall Health Score',
+                          style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.white,
+                          ),
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          score.overall >= 80
+                              ? 'Excellent — keep it up!'
+                              : score.overall >= 65
+                                  ? 'Good — minor areas to improve'
+                                  : score.overall >= 50
+                                      ? 'Fair — some attention needed'
+                                      : 'Needs Attention — consult your vet',
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            color: _pdfTeal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 12),
+
+            // Pillar breakdown with colored bars
+            ...score.pillars.map((p) {
+              final barColor = _pillarBarColor(p.score);
+              return pw.Padding(
+                padding: const pw.EdgeInsets.only(bottom: 7),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Row(
+                      children: [
+                        pw.SizedBox(
+                          width: 140,
+                          child: pw.Text(
+                            p.name,
+                            style: const pw.TextStyle(fontSize: 10),
+                          ),
+                        ),
+                        pw.Expanded(
+                          child: pw.ClipRRect(
+                            horizontalRadius: 3,
+                            verticalRadius: 3,
+                            child: pw.LinearProgressIndicator(
+                              value: p.percent,
+                              valueColor: barColor,
+                              backgroundColor: _pdfBorder,
+                            ),
+                          ),
+                        ),
+                        pw.SizedBox(width: 8),
+                        pw.Text(
+                          '${p.score}',
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            color: barColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
             pw.SizedBox(height: 16),
           ],
 
-          // Biomarkers to watch
+          // ── Biomarkers to watch ─────────────────────────────────────────
           if (watchMarkers.isNotEmpty) ...[
-            pw.Text('BIOMARKERS TO WATCH',
-                style: pw.TextStyle(
-                    fontSize: 13,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.orange900)),
-            pw.SizedBox(height: 6),
-            ...watchMarkers.map(
-              (b) => pw.Text(
-                '• ${b.name}: ${b.value?.toStringAsFixed(1) ?? 'N/A'}'
-                '${b.unit != null ? ' ${b.unit}' : ''}'
-                ' — ${b.status.toUpperCase()}',
-                style: const pw.TextStyle(fontSize: 11),
-              ),
+            _sectionHeader('BIOMARKERS TO WATCH', const PdfColor.fromInt(0xFFD98C33)),
+            pw.SizedBox(height: 8),
+            pw.Table(
+              columnWidths: {
+                0: const pw.FlexColumnWidth(3),
+                1: const pw.FlexColumnWidth(2),
+                2: const pw.FlexColumnWidth(1.5),
+              },
+              border: pw.TableBorder.all(color: _pdfBorder, width: 0.5),
+              children: [
+                // Header row
+                pw.TableRow(
+                  decoration: pw.BoxDecoration(color: _pdfLightGrey),
+                  children: [
+                    _tableCell('Biomarker', bold: true),
+                    _tableCell('Value', bold: true),
+                    _tableCell('Status', bold: true),
+                  ],
+                ),
+                ...watchMarkers.map((b) {
+                  final color = _statusColor(b.status);
+                  return pw.TableRow(
+                    children: [
+                      _tableCell(b.name),
+                      _tableCell(
+                        '${b.value?.toStringAsFixed(1) ?? 'N/A'}'
+                        '${b.unit != null ? ' ${b.unit}' : ''}',
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(6),
+                        child: pw.Text(
+                          b.status.toUpperCase(),
+                          style: pw.TextStyle(
+                            fontSize: 9,
+                            fontWeight: pw.FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ],
             ),
             pw.SizedBox(height: 16),
           ],
 
-          // Medications
+          // ── Medications ─────────────────────────────────────────────────
           if (medications.isNotEmpty) ...[
-            pw.Text('CURRENT MEDICATIONS',
-                style: pw.TextStyle(
-                    fontSize: 13,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.purple900)),
-            pw.SizedBox(height: 6),
-            ...medications.map(
-              (m) => pw.Text(
-                '• ${m.name}${m.dosage != null ? ' — ${m.dosage}' : ''}',
-                style: const pw.TextStyle(fontSize: 11),
+            _sectionHeader('CURRENT MEDICATIONS', _pdfPurple),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: _pdfLightGrey,
+                borderRadius: pw.BorderRadius.circular(8),
+                border: pw.Border.all(color: _pdfBorder),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: medications
+                    .map((m) => pw.Padding(
+                          padding: const pw.EdgeInsets.only(bottom: 4),
+                          child: pw.Row(
+                            children: [
+                              pw.Container(
+                                width: 6,
+                                height: 6,
+                                decoration: pw.BoxDecoration(
+                                  color: _pdfPurple,
+                                  shape: pw.BoxShape.circle,
+                                ),
+                              ),
+                              pw.SizedBox(width: 8),
+                              pw.Text(
+                                m.name,
+                                style: pw.TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
+                              ),
+                              if (m.dosage != null) ...[
+                                pw.Text(
+                                  ' — ${m.dosage}',
+                                  style: const pw.TextStyle(fontSize: 10),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ))
+                    .toList(),
               ),
             ),
             pw.SizedBox(height: 16),
           ],
 
-          // Recent medical records
+          // ── Medical records ─────────────────────────────────────────────
           if (records.isNotEmpty) ...[
-            pw.Text('RECENT MEDICAL RECORDS',
-                style: pw.TextStyle(
-                    fontSize: 13,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.purple900)),
-            pw.SizedBox(height: 6),
+            _sectionHeader('RECENT MEDICAL RECORDS', _pdfPurple),
+            pw.SizedBox(height: 8),
             ...records.take(10).map(
-              (r) => pw.Text(
-                '• ${r.date}: ${r.title}'
-                '${r.clinic != null ? ' (${r.clinic})' : ''}',
-                style: const pw.TextStyle(fontSize: 11),
-              ),
-            ),
+                  (r) => pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 5),
+                    child: pw.Row(
+                      children: [
+                        pw.Container(
+                          width: 4,
+                          height: 4,
+                          decoration: pw.BoxDecoration(
+                            color: _pdfPurple,
+                            shape: pw.BoxShape.circle,
+                          ),
+                        ),
+                        pw.SizedBox(width: 8),
+                        pw.Text(
+                          r.date,
+                          style: const pw.TextStyle(
+                            fontSize: 9,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
+                        pw.SizedBox(width: 8),
+                        pw.Expanded(
+                          child: pw.Text(
+                            r.title,
+                            style: const pw.TextStyle(fontSize: 10),
+                          ),
+                        ),
+                        if (r.clinic != null)
+                          pw.Text(
+                            r.clinic!,
+                            style: const pw.TextStyle(
+                              fontSize: 9,
+                              color: PdfColors.grey600,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
           ],
         ],
       ),
@@ -170,15 +459,71 @@ Future<void> _exportHealthReport({
     final petName = (pet?.name ?? 'pet').replaceAll(' ', '_');
     await Printing.sharePdf(
       bytes: await doc.save(),
-      filename: '${petName}_health_report_$dateStr.pdf',
+      filename: 'wellx_${petName}_health_report_$dateStr.pdf',
     );
   } catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
+        const SnackBar(
+          content: Text('Could not export report. Please try again.'),
+        ),
       );
     }
   }
+}
+
+// Helper widgets for PDF
+
+pw.Widget _sectionHeader(String text, PdfColor color) {
+  return pw.Row(
+    children: [
+      pw.Container(width: 3, height: 14, color: color),
+      pw.SizedBox(width: 8),
+      pw.Text(
+        text,
+        style: pw.TextStyle(
+          fontSize: 11,
+          fontWeight: pw.FontWeight.bold,
+          color: color,
+          letterSpacing: 1.2,
+        ),
+      ),
+    ],
+  );
+}
+
+pw.Widget _infoRow(String label, String value) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.only(bottom: 4),
+    child: pw.Row(
+      children: [
+        pw.SizedBox(
+          width: 80,
+          child: pw.Text(
+            label,
+            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+          ),
+        ),
+        pw.Text(
+          value,
+          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+        ),
+      ],
+    ),
+  );
+}
+
+pw.Widget _tableCell(String text, {bool bold = false}) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.all(6),
+    child: pw.Text(
+      text,
+      style: pw.TextStyle(
+        fontSize: 9,
+        fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+      ),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -651,7 +996,7 @@ class _WatchBiomarkerRow extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -689,7 +1034,7 @@ class _WatchBiomarkerRow extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -727,7 +1072,7 @@ class _MedicalRecordRow extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: WellxColors.deepPurple.withOpacity(0.12),
+              color: WellxColors.deepPurple.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.description,

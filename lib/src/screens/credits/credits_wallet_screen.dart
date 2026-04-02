@@ -73,7 +73,7 @@ class CreditsWalletScreen extends ConsumerWidget {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: WellxColors.scoreGreen.withOpacity(0.12),
+                        color: WellxColors.scoreGreen.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.favorite,
@@ -223,13 +223,13 @@ class _BalanceHeroCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               'Debit',
               style: WellxTypography.microLabel.copyWith(
-                color: Colors.white.withOpacity(0.6),
+                color: Colors.white.withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -299,7 +299,7 @@ class _ImpactPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -350,7 +350,7 @@ class _TransactionRow extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: (isIncoming ? WellxColors.scoreGreen : WellxColors.coral)
-                  .withOpacity(0.15),
+                  .withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(

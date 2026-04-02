@@ -134,7 +134,7 @@ class ShelterDogsListScreen extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: WellxColors.deepPurple.withOpacity(0.08),
+                        color: WellxColors.deepPurple.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -169,12 +169,12 @@ class ShelterDogsListScreen extends ConsumerWidget {
 
   Widget _dogPlaceholder() {
     return Container(
-      color: WellxColors.deepPurple.withOpacity(0.06),
+      color: WellxColors.deepPurple.withValues(alpha: 0.06),
       child: Center(
         child: Icon(
           Icons.pets,
           size: 32,
-          color: WellxColors.deepPurple.withOpacity(0.2),
+          color: WellxColors.deepPurple.withValues(alpha: 0.2),
         ),
       ),
     );
@@ -241,7 +241,7 @@ class ShelterDogsListScreen extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: WellxColors.textPrimary.withOpacity(0.08),
+                        color: WellxColors.textPrimary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(

@@ -148,7 +148,7 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
             padding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: WellxColors.deepPurple.withOpacity(0.06),
+              color: WellxColors.deepPurple.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -180,7 +180,7 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.10),
+              color: color.withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 18, color: color),
@@ -202,7 +202,7 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
       child: CustomPaint(
         size: const Size(24, 1),
         painter: _DashedLinePainter(
-          color: WellxColors.textTertiary.withOpacity(0.3),
+          color: WellxColors.textTertiary.withValues(alpha: 0.3),
         ),
       ),
     );
@@ -407,10 +407,10 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
 
   Widget _dogPlaceholder() {
     return Container(
-      color: WellxColors.deepPurple.withOpacity(0.06),
+      color: WellxColors.deepPurple.withValues(alpha: 0.06),
       child: Center(
         child: Icon(Icons.pets,
-            size: 24, color: WellxColors.deepPurple.withOpacity(0.2)),
+            size: 24, color: WellxColors.deepPurple.withValues(alpha: 0.2)),
       ),
     );
   }
@@ -432,7 +432,7 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: WellxColors.deepPurple.withOpacity(0.12),
+                color: WellxColors.deepPurple.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.favorite,
@@ -471,7 +471,7 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: WellxSpacing.lg),
       child: Divider(
-        color: WellxColors.border.withOpacity(0.3),
+        color: WellxColors.border.withValues(alpha: 0.3),
         height: 1,
       ),
     );

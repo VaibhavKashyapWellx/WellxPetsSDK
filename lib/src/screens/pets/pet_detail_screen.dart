@@ -76,7 +76,7 @@ class PetDetailScreen extends ConsumerWidget {
                       ),
                       decoration: BoxDecoration(
                         color: WellxColors.scoreColor(livePet.longevityScore!)
-                            .withOpacity(0.12),
+                            .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(

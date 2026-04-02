@@ -142,7 +142,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
             height: 80,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: WellxColors.deepPurple.withOpacity(0.1),
+              color: WellxColors.deepPurple.withValues(alpha: 0.1),
             ),
             child: const Icon(
               Icons.document_scanner_rounded,
@@ -354,7 +354,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: WellxColors.alertGreen.withOpacity(0.15),
+                  color: WellxColors.alertGreen.withValues(alpha: 0.15),
                 ),
                 child: const Icon(
                   Icons.check_circle_rounded,
@@ -576,7 +576,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
     return Container(
       padding: const EdgeInsets.all(WellxSpacing.md),
       decoration: BoxDecoration(
-        color: WellxColors.alertRed.withOpacity(0.08),
+        color: WellxColors.alertRed.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(

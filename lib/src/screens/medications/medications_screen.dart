@@ -138,7 +138,7 @@ class _MedicationCard extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: urgencyCol.withOpacity(0.12),
+                    color: urgencyCol.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(Icons.medication_rounded,
@@ -165,7 +165,7 @@ class _MedicationCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: urgencyCol.withOpacity(0.1),
+                      color: urgencyCol.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(

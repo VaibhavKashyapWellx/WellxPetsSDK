@@ -93,7 +93,7 @@ class _TravelChecklistScreenState
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: status.color.withOpacity(0.12),
+                    color: status.color.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(status.icon, size: 20, color: status.color),
@@ -229,7 +229,7 @@ class _TravelChecklistScreenState
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: item.completed
-                  ? WellxColors.alertGreen.withOpacity(0.3)
+                  ? WellxColors.alertGreen.withValues(alpha: 0.3)
                   : WellxColors.border,
             ),
           ),

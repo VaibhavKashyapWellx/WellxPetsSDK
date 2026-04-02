@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/venue_models.dart';
@@ -112,7 +113,7 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: WellxColors.textPrimary.withOpacity(0.06),
+                color: WellxColors.textPrimary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -364,7 +365,7 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
                   color: isOn
-                      ? Colors.white.withOpacity(0.7)
+                      ? Colors.white.withValues(alpha: 0.7)
                       : WellxColors.textTertiary,
                 ),
               ),
@@ -493,10 +494,11 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
               height: 160,
               width: double.infinity,
               child: venue.hasImage
-                  ? Image.network(
-                      venue.imageUrl!,
+                  ? CachedNetworkImage(
+                      imageUrl: venue.imageUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _picsumPlaceholder(venue),
+                      placeholder: (_, __) => const ColoredBox(color: WellxColors.flatCardFill),
+                      errorWidget: (_, __, ___) => _picsumPlaceholder(venue),
                     )
                   : _picsumPlaceholder(venue),
             ),
@@ -594,10 +596,11 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.network(
-          _venueImageUrl(venue),
+        CachedNetworkImage(
+          imageUrl: _venueImageUrl(venue),
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _categoryPlaceholder(venue),
+          placeholder: (_, __) => const ColoredBox(color: WellxColors.flatCardFill),
+          errorWidget: (_, __, ___) => _categoryPlaceholder(venue),
         ),
         // Subtle tinted overlay to unify with the app's palette
         Container(
@@ -606,8 +609,8 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                venue.displayCategory.color.withOpacity(0.08),
-                Colors.black.withOpacity(0.12),
+                venue.displayCategory.color.withValues(alpha: 0.08),
+                Colors.black.withValues(alpha: 0.12),
               ],
             ),
           ),
@@ -620,7 +623,7 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
             padding:
                 const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: venue.displayCategory.color.withOpacity(0.85),
+              color: venue.displayCategory.color.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -644,18 +647,18 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
 
   Widget _categoryPlaceholder(Venue venue) {
     return Container(
-      color: venue.displayCategory.color.withOpacity(0.1),
+      color: venue.displayCategory.color.withValues(alpha: 0.1),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(venue.displayCategory.icon,
-                size: 32, color: venue.displayCategory.color.withOpacity(0.4)),
+                size: 32, color: venue.displayCategory.color.withValues(alpha: 0.4)),
             const SizedBox(height: 4),
             Text(
               venue.displayCategory.displayName,
               style: WellxTypography.chipText.copyWith(
-                color: venue.displayCategory.color.withOpacity(0.5),
+                color: venue.displayCategory.color.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -668,7 +671,7 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -691,7 +694,7 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: highlighted
-            ? WellxColors.midPurple.withOpacity(0.12)
+            ? WellxColors.midPurple.withValues(alpha: 0.12)
             : WellxColors.flatCardFill,
         borderRadius: BorderRadius.circular(8),
       ),

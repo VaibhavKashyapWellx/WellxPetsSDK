@@ -71,7 +71,7 @@ class EarnCoinsScreen extends ConsumerWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: WellxColors.amberWatch.withOpacity(0.12),
+                      color: WellxColors.amberWatch.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.star_rounded,
@@ -112,7 +112,7 @@ class EarnCoinsScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: WellxColors.amberWatch.withOpacity(0.08),
+                color: WellxColors.amberWatch.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
@@ -177,7 +177,7 @@ class _EarnActionCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: _actionColor(action).withOpacity(0.12),
+              color: _actionColor(action).withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -208,7 +208,7 @@ class _EarnActionCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: WellxColors.amberWatch.withOpacity(0.12),
+                  color: WellxColors.amberWatch.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(

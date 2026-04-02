@@ -158,12 +158,12 @@ class VenueDetailScreen extends StatelessWidget {
 
   Widget _placeholder() {
     return Container(
-      color: venue.displayCategory.color.withOpacity(0.1),
+      color: venue.displayCategory.color.withValues(alpha: 0.1),
       child: Center(
         child: Icon(
           venue.displayCategory.icon,
           size: 48,
-          color: venue.displayCategory.color.withOpacity(0.3),
+          color: venue.displayCategory.color.withValues(alpha: 0.3),
         ),
       ),
     );
@@ -174,7 +174,7 @@ class VenueDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: status.color.withOpacity(0.1),
+        color: status.color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -212,7 +212,7 @@ class VenueDetailScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 18, color: color),
@@ -303,7 +303,7 @@ class VenueDetailScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: highlighted
-            ? WellxColors.midPurple.withOpacity(0.12)
+            ? WellxColors.midPurple.withValues(alpha: 0.12)
             : WellxColors.flatCardFill,
         borderRadius: BorderRadius.circular(10),
       ),

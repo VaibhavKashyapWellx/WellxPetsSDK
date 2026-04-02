@@ -382,7 +382,7 @@ class _OverviewTab extends StatelessWidget {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: WellxColors.coral.withOpacity(0.12),
+                          color: WellxColors.coral.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.warning_amber,
@@ -657,7 +657,7 @@ class _BiomarkerDetailRow extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.12),
+                        color: statusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -683,10 +683,10 @@ class _BiomarkerDetailRow extends StatelessWidget {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        WellxColors.amberWatch.withOpacity(0.3),
-                        WellxColors.scoreGreen.withOpacity(0.3),
-                        WellxColors.scoreGreen.withOpacity(0.3),
-                        WellxColors.coral.withOpacity(0.3),
+                        WellxColors.amberWatch.withValues(alpha: 0.3),
+                        WellxColors.scoreGreen.withValues(alpha: 0.3),
+                        WellxColors.scoreGreen.withValues(alpha: 0.3),
+                        WellxColors.coral.withValues(alpha: 0.3),
                       ],
                       stops: const [0.0, 0.2, 0.8, 1.0],
                     ),
@@ -760,7 +760,7 @@ class _MedicationsTab extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: WellxColors.deepPurple.withOpacity(0.12),
+                    color: WellxColors.deepPurple.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.medication,
@@ -876,7 +876,7 @@ class _RecordsTab extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: WellxColors.deepPurple.withOpacity(0.12),
+                    color: WellxColors.deepPurple.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.description,
@@ -975,7 +975,7 @@ class _WalksTab extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: WellxColors.bodyActivity.withOpacity(0.12),
+                    color: WellxColors.bodyActivity.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.directions_walk,
