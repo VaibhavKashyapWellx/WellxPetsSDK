@@ -63,3 +63,8 @@ dart_defines/
 # Generated files
 *.g.dart
 *.freezed.dart
+
+.claude/
+screenshots/
+audits/
+build/
