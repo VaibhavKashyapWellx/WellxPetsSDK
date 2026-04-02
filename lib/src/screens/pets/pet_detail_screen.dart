@@ -158,6 +158,8 @@ class PetDetailScreen extends ConsumerWidget {
                     icon: Icons.folder_outlined,
                     label: 'Documents',
                     onTap: () {
+                      // Set the selected pet so wallet shows the right documents
+                      ref.read(selectedPetIdProvider.notifier).state = livePet.id;
                       context.go('/wallet');
                     },
                   ),

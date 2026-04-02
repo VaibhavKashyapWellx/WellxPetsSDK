@@ -212,7 +212,7 @@ class Medication {
     final total = supplyTotal;
     final remaining = supplyRemaining;
     if (total == null || total <= 0 || remaining == null) return 0;
-    return remaining / total;
+    return (remaining / total).clamp(0.0, 1.0);
   }
 
   String get urgencyColor {

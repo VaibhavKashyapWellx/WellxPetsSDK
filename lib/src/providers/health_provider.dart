@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/health_models.dart';
+import '../services/bcs_service.dart';
 import '../services/health_service.dart';
 
 final healthServiceProvider = Provider((ref) => HealthService());
+final bcsServiceProvider = Provider((ref) => BCSService());
 
 final biomarkersProvider = FutureProvider.family<List<Biomarker>, String>((ref, petId) async {
   return ref.watch(healthServiceProvider).getBiomarkers(petId);
@@ -30,4 +32,9 @@ final documentsProvider = FutureProvider.family<List<PetDocument>, String>((ref,
 
 final healthAlertsProvider = FutureProvider.family<List<HealthAlert>, String>((ref, petId) async {
   return ref.watch(healthServiceProvider).getHealthAlerts(petId);
+});
+
+final wellnessSurveyProvider =
+    FutureProvider.family<WellnessSurveyResult?, String>((ref, petId) async {
+  return ref.watch(healthServiceProvider).getLatestWellnessSurvey(petId);
 });

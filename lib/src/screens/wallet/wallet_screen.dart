@@ -138,26 +138,43 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
     try {
       final healthService = ref.read(healthServiceProvider);
+
+      // Upload file bytes to Supabase storage first
+      final fileBytes = await picked.readAsBytes();
+      final ext = picked.name.split('.').last.toLowerCase();
+      final contentType = ext == 'pdf' ? 'application/pdf' : 'image/$ext';
+      final fileUrl = await healthService.uploadDocument(
+        petId: petId,
+        fileName: picked.name,
+        fileData: fileBytes,
+        contentType: contentType,
+      );
+
+      // Create the document record with the real storage URL
       final doc = DocumentCreate(
         id: const Uuid().v4(),
         petId: petId,
         title: picked.name.split('.').first,
         date: DateTime.now().toIso8601String().split('T').first,
         category: category,
-        fileType: picked.name.split('.').last,
+        fileType: ext,
+        fileUrl: fileUrl,
       );
       await healthService.addDocument(doc);
       ref.invalidate(documentsProvider(petId));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Document uploaded')),
+          const SnackBar(content: Text('Document uploaded successfully')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: WellxColors.coral,
+          ),
         );
       }
     }

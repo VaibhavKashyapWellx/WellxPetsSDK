@@ -18,6 +18,7 @@ import '../screens/wallet/document_detail_screen.dart';
 import '../screens/credits/credits_wallet_screen.dart';
 import '../screens/credits/earn_coins_screen.dart';
 import '../screens/health/health_dashboard_screen.dart';
+import '../screens/health/wellness_survey_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/settings/edit_profile_screen.dart';
 import '../screens/venues/venues_screen.dart';
@@ -104,6 +105,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => const MaterialPage(
           fullscreenDialog: true,
           child: SymptomLoggerScreen(),
+        ),
+      ),
+
+      // Wellness survey
+      GoRoute(
+        path: '/wellness-survey',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => const MaterialPage(
+          fullscreenDialog: true,
+          child: WellnessSurveyScreen(),
         ),
       ),
 

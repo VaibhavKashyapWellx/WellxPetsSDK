@@ -372,6 +372,74 @@ class HealthService {
       throw HealthServiceException('Failed to resolve symptom: $e');
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Health Score History
+  // ---------------------------------------------------------------------------
+
+  /// Upsert a health score snapshot for trend tracking.
+  Future<void> saveHealthScore(
+    String petId,
+    int score,
+    Map<String, int> breakdown,
+  ) async {
+    try {
+      await SupabaseManager.instance.client.from('health_scores').upsert({
+        'pet_id': petId,
+        'score': score,
+        'breakdown': breakdown,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      });
+    } catch (_) {
+      // Non-fatal — score history is a nice-to-have
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Wellness Survey
+  // ---------------------------------------------------------------------------
+
+  /// Save (upsert) a wellness survey result for a pet.
+  Future<void> saveWellnessSurvey({
+    required String petId,
+    required String ownerId,
+    required Map<String, int> answers,
+  }) async {
+    try {
+      await SupabaseManager.instance.client.from('wellness_surveys').upsert({
+        'pet_id': petId,
+        'owner_id': ownerId,
+        'answers': answers,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      });
+    } catch (e) {
+      throw HealthServiceException('Failed to save wellness survey: $e');
+    }
+  }
+
+  /// Fetch the most recent wellness survey for a pet, or null if none exists.
+  Future<WellnessSurveyResult?> getLatestWellnessSurvey(String petId) async {
+    try {
+      final response = await SupabaseManager.instance.client
+          .from('wellness_surveys')
+          .select()
+          .eq('pet_id', petId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      if (response == null) return null;
+      final data = Map<String, dynamic>.from(response as Map);
+      final rawAnswers = (data['answers'] as Map?)?.cast<String, dynamic>() ?? {};
+      final answers = rawAnswers.map((k, v) => MapEntry(k, (v as num).toInt()));
+      return WellnessSurveyResult(
+        petId: petId,
+        date: (data['created_at'] as String?) ?? DateTime.now().toIso8601String(),
+        answers: answers,
+      );
+    } catch (e) {
+      throw HealthServiceException('Failed to fetch wellness survey: $e');
+    }
+  }
 }
 
 /// Exception thrown by [HealthService] operations.

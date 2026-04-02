@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../../models/health_models.dart';
+import '../../models/pet.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/pet_provider.dart';
 import '../../services/score_calculator.dart';
@@ -11,6 +15,175 @@ import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
 import '../../widgets/wellx_card.dart';
 import '../health/biomarker_arc_gauge.dart';
+
+// ---------------------------------------------------------------------------
+// PDF Export
+// ---------------------------------------------------------------------------
+
+/// Generate and share a health report PDF for the given pet.
+Future<void> _exportHealthReport({
+  required BuildContext context,
+  required Pet? pet,
+  required HealthScore? score,
+  required List<Biomarker> biomarkers,
+  required List<MedicalRecord> records,
+  required List<Medication> medications,
+}) async {
+  try {
+    final doc = pw.Document();
+    final now = DateTime.now();
+    final dateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    final watchMarkers = biomarkers
+        .where((b) => b.status == 'high' || b.status == 'low')
+        .toList();
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(40),
+        header: (_) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              'WellX Pet Health Report',
+              style: pw.TextStyle(
+                  fontSize: 22, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              'Generated $dateStr',
+              style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600),
+            ),
+            pw.Divider(),
+          ],
+        ),
+        build: (_) => [
+          // Pet info
+          if (pet != null) ...[
+            pw.Text('PET INFORMATION',
+                style: pw.TextStyle(
+                    fontSize: 13,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.purple900)),
+            pw.SizedBox(height: 6),
+            pw.Text('Name: ${pet.name}'),
+            if (pet.breed != null) pw.Text('Breed: ${pet.breed}'),
+            if (pet.species != null)
+              pw.Text('Species: ${pet.species!.toUpperCase()}'),
+            if (pet.weight != null)
+              pw.Text('Weight: ${pet.weight!.toStringAsFixed(1)} kg'),
+            pw.SizedBox(height: 16),
+          ],
+
+          // Health score
+          if (score != null) ...[
+            pw.Text('HEALTH SCORE',
+                style: pw.TextStyle(
+                    fontSize: 13,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.purple900)),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              'Overall Score: ${score.overall} / 100',
+              style: pw.TextStyle(
+                  fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 8),
+            ...score.pillars.map(
+              (p) => pw.Padding(
+                padding: const pw.EdgeInsets.only(bottom: 4),
+                child: pw.Row(
+                  children: [
+                    pw.SizedBox(
+                      width: 160,
+                      child: pw.Text(p.name,
+                          style: const pw.TextStyle(fontSize: 11)),
+                    ),
+                    pw.Text('${p.score}/100',
+                        style: pw.TextStyle(
+                            fontSize: 11,
+                            fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 16),
+          ],
+
+          // Biomarkers to watch
+          if (watchMarkers.isNotEmpty) ...[
+            pw.Text('BIOMARKERS TO WATCH',
+                style: pw.TextStyle(
+                    fontSize: 13,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.orange900)),
+            pw.SizedBox(height: 6),
+            ...watchMarkers.map(
+              (b) => pw.Text(
+                '• ${b.name}: ${b.value?.toStringAsFixed(1) ?? 'N/A'}'
+                '${b.unit != null ? ' ${b.unit}' : ''}'
+                ' — ${b.status.toUpperCase()}',
+                style: const pw.TextStyle(fontSize: 11),
+              ),
+            ),
+            pw.SizedBox(height: 16),
+          ],
+
+          // Medications
+          if (medications.isNotEmpty) ...[
+            pw.Text('CURRENT MEDICATIONS',
+                style: pw.TextStyle(
+                    fontSize: 13,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.purple900)),
+            pw.SizedBox(height: 6),
+            ...medications.map(
+              (m) => pw.Text(
+                '• ${m.name}${m.dosage != null ? ' — ${m.dosage}' : ''}',
+                style: const pw.TextStyle(fontSize: 11),
+              ),
+            ),
+            pw.SizedBox(height: 16),
+          ],
+
+          // Recent medical records
+          if (records.isNotEmpty) ...[
+            pw.Text('RECENT MEDICAL RECORDS',
+                style: pw.TextStyle(
+                    fontSize: 13,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.purple900)),
+            pw.SizedBox(height: 6),
+            ...records.take(10).map(
+              (r) => pw.Text(
+                '• ${r.date}: ${r.title}'
+                '${r.clinic != null ? ' (${r.clinic})' : ''}',
+                style: const pw.TextStyle(fontSize: 11),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    final petName = (pet?.name ?? 'pet').replaceAll(' ', '_');
+    await Printing.sharePdf(
+      bytes: await doc.save(),
+      filename: '${petName}_health_report_$dateStr.pdf',
+    );
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Export failed: $e')),
+      );
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Report Screen
+// ---------------------------------------------------------------------------
 
 /// Reports tab -- health score, biomarker trends, medical records.
 class ReportScreen extends ConsumerWidget {
@@ -34,10 +207,19 @@ class ReportScreen extends ConsumerWidget {
         petId != null ? ref.watch(walkSessionsProvider(petId)) : null;
     final walks = walkSessionsAsync?.valueOrNull ?? [];
 
-    final healthScore = biomarkers.isNotEmpty
+    final medicationsAsync =
+        petId != null ? ref.watch(medicationsProvider(petId)) : null;
+    final medications = medicationsAsync?.valueOrNull ?? [];
+
+    final wellnessAsync =
+        petId != null ? ref.watch(wellnessSurveyProvider(petId)) : null;
+    final wellness = wellnessAsync?.valueOrNull;
+
+    final healthScore = (biomarkers.isNotEmpty || wellness != null)
         ? ScoreCalculator.calculate(
             biomarkers: biomarkers,
             walkSessions: walks,
+            wellnessResult: wellness,
             pet: selectedPet,
           )
         : null;
@@ -271,21 +453,31 @@ class ReportScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(
                 WellxSpacing.lg, 0, WellxSpacing.lg, 100,
               ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  gradient: WellxColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(14),
+              child: GestureDetector(
+                onTap: () => _exportHealthReport(
+                  context: context,
+                  pet: selectedPet,
+                  score: healthScore,
+                  biomarkers: biomarkers,
+                  records: records,
+                  medications: medications,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.ios_share, size: 16, color: Colors.white),
-                    const SizedBox(width: 8),
-                    Text('Export Health Report',
-                        style: WellxTypography.buttonLabel),
-                  ],
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: WellxColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.ios_share, size: 16, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text('Export Health Report',
+                          style: WellxTypography.buttonLabel),
+                    ],
+                  ),
                 ),
               ),
             ),

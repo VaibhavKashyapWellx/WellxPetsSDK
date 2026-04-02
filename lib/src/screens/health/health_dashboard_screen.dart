@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../models/health_models.dart';
 import '../../providers/health_provider.dart';
@@ -31,12 +32,120 @@ class _HealthDashboardScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    // Rebuild when tab index changes so FAB shows/hides correctly
+    _tabController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _showAddMedicationDialog(
+      BuildContext context, String petId) async {
+    final nameCtrl = TextEditingController();
+    final dosageCtrl = TextEditingController();
+    final freqCtrl = TextEditingController();
+    int? supplyCount;
+    bool saving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('Add Medication'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Medication name *',
+                      hintText: 'e.g. Apoquel',
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: dosageCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Dosage',
+                      hintText: 'e.g. 5mg twice daily',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: freqCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Instructions',
+                      hintText: 'e.g. Give with food',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Supply count (pills/doses)',
+                      hintText: 'e.g. 30',
+                    ),
+                    onChanged: (v) => supplyCount = int.tryParse(v),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: WellxColors.deepPurple,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: saving
+                    ? null
+                    : () async {
+                        final name = nameCtrl.text.trim();
+                        if (name.isEmpty) return;
+                        setDialogState(() => saving = true);
+                        try {
+                          await ref
+                              .read(healthServiceProvider)
+                              .addMedication(MedicationCreate(
+                                id: const Uuid().v4(),
+                                petId: petId,
+                                name: name,
+                                dosage: dosageCtrl.text.trim().isEmpty
+                                    ? null
+                                    : dosageCtrl.text.trim(),
+                                instructions: freqCtrl.text.trim().isEmpty
+                                    ? null
+                                    : freqCtrl.text.trim(),
+                                supplyTotal: supplyCount,
+                                supplyRemaining: supplyCount,
+                              ));
+                          ref.invalidate(medicationsProvider(petId));
+                          if (ctx.mounted) Navigator.pop(ctx);
+                        } catch (e) {
+                          setDialogState(() => saving = false);
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text('Failed to add: $e')),
+                            );
+                          }
+                        }
+                      },
+                child: const Text('Add'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -48,23 +157,53 @@ class _HealthDashboardScreenState
     final recordsAsync = ref.watch(medicalRecordsProvider(petId));
     final walksAsync = ref.watch(walkSessionsProvider(petId));
     final alertsAsync = ref.watch(healthAlertsProvider(petId));
+    final wellnessAsync = ref.watch(wellnessSurveyProvider(petId));
 
     final biomarkers = biomarkersAsync.valueOrNull ?? [];
     final medications = medicationsAsync.valueOrNull ?? [];
     final records = recordsAsync.valueOrNull ?? [];
     final walks = walksAsync.valueOrNull ?? [];
     final alerts = alertsAsync.valueOrNull ?? [];
+    final wellness = wellnessAsync.valueOrNull;
 
-    final healthScore = biomarkers.isNotEmpty
+    final healthScore = (biomarkers.isNotEmpty || wellness != null)
         ? ScoreCalculator.calculate(
             biomarkers: biomarkers,
             walkSessions: walks,
+            wellnessResult: wellness,
             pet: pet,
           )
         : null;
 
+    // Persist health score whenever biomarkers reload (non-fatal side effect)
+    ref.listen(biomarkersProvider(petId), (_, next) {
+      if (next.hasValue && next.value!.isNotEmpty) {
+        final score = ScoreCalculator.calculate(
+          biomarkers: next.value!,
+          walkSessions: ref.read(walkSessionsProvider(petId)).valueOrNull ?? [],
+          wellnessResult:
+              ref.read(wellnessSurveyProvider(petId)).valueOrNull,
+          pet: ref.read(selectedPetProvider),
+        );
+        ref.read(healthServiceProvider).saveHealthScore(
+          petId,
+          score.overall,
+          {for (final p in score.pillars) p.name: p.score},
+        );
+      }
+    });
+
     return Scaffold(
       backgroundColor: WellxColors.background,
+      // FAB only visible on the Medications tab (index 2)
+      floatingActionButton: _tabController.index == 2
+          ? FloatingActionButton(
+              backgroundColor: WellxColors.deepPurple,
+              foregroundColor: Colors.white,
+              onPressed: () => _showAddMedicationDialog(context, petId),
+              child: const Icon(Icons.add),
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: WellxColors.background,
         surfaceTintColor: Colors.transparent,

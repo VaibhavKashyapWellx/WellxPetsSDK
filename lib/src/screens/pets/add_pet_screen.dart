@@ -138,8 +138,17 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
       if (_photoBytes != null) {
         try {
           await service.uploadAndSetPhoto(created.id, _photoBytes!);
-        } catch (_) {
-          // Pet was created — photo upload failure is non-fatal
+        } catch (e) {
+          // Pet was created — photo upload failure is non-fatal, but inform user
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Pet saved, but photo upload failed: $e'),
+                backgroundColor: WellxColors.amberWatch,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
         }
       }
 

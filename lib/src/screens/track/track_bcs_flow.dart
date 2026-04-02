@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../models/bcs_models.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/health_provider.dart';
+import '../../providers/pet_provider.dart';
 import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
 import '../../widgets/wellx_card.dart';
 import '../../widgets/wellx_primary_button.dart';
-import '../../models/bcs_models.dart';
 
 // ---------------------------------------------------------------------------
 // BCS Flow Steps
@@ -34,6 +37,7 @@ class _TrackBCSFlowState extends ConsumerState<TrackBCSFlow>
   _BCSStep _step = _BCSStep.instructions;
   final _picker = ImagePicker();
   String? _imagePath;
+  XFile? _pickedFile;
 
   // Mock result data
   BCSRecord? _result;
@@ -434,6 +438,7 @@ class _TrackBCSFlowState extends ConsumerState<TrackBCSFlow>
       final xFile = await _picker.pickImage(source: source, imageQuality: 85);
       if (xFile == null) return;
       setState(() {
+        _pickedFile = xFile;
         _imagePath = xFile.path;
         _error = null;
         _step = _BCSStep.processing;
@@ -510,53 +515,94 @@ class _TrackBCSFlowState extends ConsumerState<TrackBCSFlow>
   }
 
   void _runMockAnalysis() {
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 3), () async {
       if (!mounted) return;
       // Generate mock BCS result
       final rng = Random();
       final score = 4 + rng.nextInt(3); // 4-6 range for demo
       final confidence = 0.82 + rng.nextDouble() * 0.15;
 
+      final result = BCSRecord(
+        id: 'bcs_mock_${DateTime.now().millisecondsSinceEpoch}',
+        date: DateTime.now(),
+        score: score,
+        label: score <= 3
+            ? 'Underweight'
+            : score <= 5
+                ? 'Ideal'
+                : score <= 7
+                    ? 'Overweight'
+                    : 'Obese',
+        confidence: confidence,
+        onLineSummary: score <= 5
+            ? 'Your pet appears to be in good body condition with appropriate weight distribution.'
+            : 'Your pet shows signs of being slightly over ideal weight with reduced waist definition.',
+        keyObservations: [
+          'Ribs palpable with slight fat covering',
+          'Waist visible when viewed from above',
+          'Abdominal tuck present from the side',
+          'Overall muscular condition appears healthy',
+        ],
+        healthFlags: score > 5
+            ? ['Consider portion control', 'Increase daily exercise']
+            : [],
+        dietaryRecommendation: score <= 5
+            ? 'Maintain current diet and exercise regimen. Consider adding omega-3 supplements.'
+            : 'Consider reducing daily food intake by 10-15%. Increase exercise duration by 15 minutes.',
+        speciesDetected: 'Dog',
+        breedDetected: 'Mixed Breed',
+        recheckWeeks: 4,
+        viewQuality: const BCSViewQuality(
+          lateral: 'good',
+          dorsal: 'partial',
+          posterior: 'good',
+        ),
+      );
+
       setState(() {
-        _result = BCSRecord(
-          id: 'bcs_mock_${DateTime.now().millisecondsSinceEpoch}',
-          date: DateTime.now(),
-          score: score,
-          label: score <= 3
-              ? 'Underweight'
-              : score <= 5
-                  ? 'Ideal'
-                  : score <= 7
-                      ? 'Overweight'
-                      : 'Obese',
-          confidence: confidence,
-          onLineSummary: score <= 5
-              ? 'Your pet appears to be in good body condition with appropriate weight distribution.'
-              : 'Your pet shows signs of being slightly over ideal weight with reduced waist definition.',
-          keyObservations: [
-            'Ribs palpable with slight fat covering',
-            'Waist visible when viewed from above',
-            'Abdominal tuck present from the side',
-            'Overall muscular condition appears healthy',
-          ],
-          healthFlags: score > 5
-              ? ['Consider portion control', 'Increase daily exercise']
-              : [],
-          dietaryRecommendation: score <= 5
-              ? 'Maintain current diet and exercise regimen. Consider adding omega-3 supplements.'
-              : 'Consider reducing daily food intake by 10-15%. Increase exercise duration by 15 minutes.',
-          speciesDetected: 'Dog',
-          breedDetected: 'Mixed Breed',
-          recheckWeeks: 4,
-          viewQuality: const BCSViewQuality(
-            lateral: 'good',
-            dorsal: 'partial',
-            posterior: 'good',
-          ),
-        );
+        _result = result;
         _step = _BCSStep.results;
       });
+
+      // Persist to Supabase (non-fatal fire-and-forget)
+      _persistBCSResult(result);
     });
+  }
+
+  Future<void> _persistBCSResult(BCSRecord record) async {
+    try {
+      final pet = ref.read(selectedPetProvider);
+      final auth = ref.read(currentAuthProvider);
+      if (pet == null || auth.userId == null) return;
+
+      final bcsService = ref.read(bcsServiceProvider);
+
+      String? imageUrl;
+      final file = _pickedFile;
+      if (file != null) {
+        try {
+          final bytes = await file.readAsBytes();
+          imageUrl = await bcsService.uploadBCSPhoto(
+            petId: pet.id,
+            photoData: bytes,
+            fileName: file.name,
+          );
+        } catch (_) {
+          // Photo upload failure is non-fatal
+        }
+      }
+
+      await bcsService.saveBCSResult(
+        petId: pet.id,
+        ownerId: auth.userId!,
+        score: record.score,
+        imageUrl: imageUrl,
+        muscleCondition: record.label,
+        notes: record.keyObservations.join('; '),
+      );
+    } catch (_) {
+      // BCS save failure is non-fatal — result is already shown to user
+    }
   }
 
   // ---------- Step 4: Results ----------
