@@ -42,6 +42,7 @@ class HomeScreen extends ConsumerWidget {
         : null;
 
     final isScoreUnlocked = healthScore != null;
+    final hasPets = pets.isNotEmpty;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -58,6 +59,22 @@ class HomeScreen extends ConsumerWidget {
                 Text('Wellx Pets', style: WellxTypography.screenTitle),
                 Row(
                   children: [
+                    if (hasPets)
+                      GestureDetector(
+                        onTap: () => context.push('/add-pet'),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: WellxColors.cardSurface,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: WellxColors.border),
+                          ),
+                          child: const Icon(Icons.add,
+                              color: WellxColors.textSecondary, size: 16),
+                        ),
+                      ),
+                    const SizedBox(width: 10),
                     GestureDetector(
                       onTap: () => context.push('/settings'),
                       child: const Icon(Icons.settings_outlined,
@@ -70,7 +87,7 @@ class HomeScreen extends ConsumerWidget {
 
             const SizedBox(height: WellxSpacing.lg),
 
-            // Pet selector
+            // Pet selector (shown when multiple pets)
             if (pets.length > 1)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -128,11 +145,14 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: WellxSpacing.xl),
 
             // Health score card
-            isScoreUnlocked
-                ? _ScoreCard(score: healthScore, petName: selectedPet?.name)
-                : _LockedScoreCard(
-                    onTap: () => context.go('/track'),
-                  ),
+            if (!hasPets)
+              _AddFirstPetCard(onTap: () => context.push('/add-pet'))
+            else if (isScoreUnlocked)
+              _ScoreCard(score: healthScore, petName: selectedPet?.name)
+            else
+              _LockedScoreCard(
+                onTap: () => context.go('/track'),
+              ),
 
             const SizedBox(height: WellxSpacing.xl),
 
@@ -332,6 +352,81 @@ class _ScoreCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Add First Pet Card (no pets yet)
+// ---------------------------------------------------------------------------
+
+class _AddFirstPetCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AddFirstPetCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return WellxCard(
+      padding: const EdgeInsets.all(WellxSpacing.xxl),
+      backgroundColor: WellxColors.inkPrimary,
+      borderColor: Colors.transparent,
+      child: Center(
+        child: Column(
+          children: [
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.12),
+              ),
+              child: const Icon(Icons.pets, color: Colors.white, size: 32),
+            ),
+            const SizedBox(height: WellxSpacing.lg),
+            Text(
+              'Add your first pet\nto get started',
+              textAlign: TextAlign.center,
+              style: WellxTypography.heading.copyWith(color: Colors.white),
+            ),
+            const SizedBox(height: WellxSpacing.sm),
+            Text(
+              'Track health, chat with Dr. Layla,\nand unlock your pet\'s health score.',
+              textAlign: TextAlign.center,
+              style: WellxTypography.captionText.copyWith(
+                color: Colors.white60,
+              ),
+            ),
+            const SizedBox(height: WellxSpacing.xl),
+            GestureDetector(
+              onTap: onTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: WellxSpacing.xl,
+                  vertical: WellxSpacing.md,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.add_circle_outline, size: 18),
+                    const SizedBox(width: WellxSpacing.sm),
+                    Text(
+                      'Add a Pet',
+                      style: WellxTypography.buttonLabel.copyWith(
+                        color: WellxColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

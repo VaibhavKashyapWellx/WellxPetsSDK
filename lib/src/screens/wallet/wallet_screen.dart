@@ -69,9 +69,67 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     );
     if (category == null || !mounted) return;
 
+    // Let user choose camera or gallery
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: WellxColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: WellxColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: WellxColors.deepPurple.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.camera_alt_rounded,
+                    color: WellxColors.deepPurple, size: 20),
+              ),
+              title: const Text('Take Photo'),
+              subtitle: const Text('Use camera to photograph a document'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: WellxColors.scoreBlue.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.photo_library_rounded,
+                    color: WellxColors.scoreBlue, size: 20),
+              ),
+              title: const Text('Choose from Gallery'),
+              subtitle: const Text('Select an existing file'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
       maxWidth: 2048,
       maxHeight: 2048,
       imageQuality: 85,
@@ -145,14 +203,17 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   children: [
                     Text('Records', style: WellxTypography.screenTitle),
                     const Spacer(),
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: const BoxDecoration(
-                        color: WellxColors.textPrimary,
-                        shape: BoxShape.circle,
+                    GestureDetector(
+                      onTap: () => _uploadDocument(context, ref, petId),
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: const BoxDecoration(
+                          color: WellxColors.textPrimary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.add, color: Colors.white, size: 16),
                       ),
-                      child: const Icon(Icons.add, color: Colors.white, size: 16),
                     ),
                   ],
                 ),

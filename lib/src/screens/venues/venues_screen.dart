@@ -463,6 +463,12 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
     );
   }
 
+  /// Returns a consistent picsum landscape photo seeded on the venue name.
+  String _venueImageUrl(Venue venue) {
+    final seed = venue.name.toLowerCase().replaceAll(' ', '-');
+    return 'https://picsum.photos/seed/$seed/600/300';
+  }
+
   Widget _venueCard(BuildContext context, Venue venue) {
     return GestureDetector(
       onTap: () {
@@ -482,7 +488,7 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image area
+            // Image area — use real URL if available, then picsum, then icon placeholder
             SizedBox(
               height: 160,
               width: double.infinity,
@@ -490,10 +496,9 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
                   ? Image.network(
                       venue.imageUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          _categoryPlaceholder(venue),
+                      errorBuilder: (_, __, ___) => _picsumPlaceholder(venue),
                     )
-                  : _categoryPlaceholder(venue),
+                  : _picsumPlaceholder(venue),
             ),
 
             Padding(
@@ -581,6 +586,59 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Picsum-backed placeholder with a subtle category badge overlay.
+  Widget _picsumPlaceholder(Venue venue) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          _venueImageUrl(venue),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _categoryPlaceholder(venue),
+        ),
+        // Subtle tinted overlay to unify with the app's palette
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                venue.displayCategory.color.withOpacity(0.08),
+                Colors.black.withOpacity(0.12),
+              ],
+            ),
+          ),
+        ),
+        // Category badge in top-right corner
+        Positioned(
+          top: 10,
+          right: 10,
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: venue.displayCategory.color.withOpacity(0.85),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(venue.displayCategory.icon,
+                    size: 10, color: Colors.white),
+                const SizedBox(width: 4),
+                Text(
+                  venue.displayCategory.displayName,
+                  style: WellxTypography.microLabel
+                      .copyWith(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

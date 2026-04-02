@@ -354,6 +354,13 @@ class TravelScreen extends ConsumerWidget {
     );
   }
 
+  /// Returns a stable picsum image URL seeded on the country name.
+  String _destinationImageUrl(String countryName) {
+    // Use a simple hash to pick a consistent landscape photo for each country.
+    final seed = countryName.toLowerCase().replaceAll(' ', '-');
+    return 'https://picsum.photos/seed/$seed/400/300';
+  }
+
   Widget _destinationCard(BuildContext context, TravelDestination dest) {
     return GestureDetector(
       onTap: () {
@@ -366,83 +373,85 @@ class TravelScreen extends ConsumerWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1A1B1F), Color(0xFF262830)],
-          ),
+          color: const Color(0xFF1A1B1F),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            // Flag emoji background
-            Center(
-              child: Text(
-                dest.flag,
-                style: const TextStyle(fontSize: 60),
+            // Landscape photo background
+            Image.network(
+              _destinationImageUrl(dest.countryName),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: const Color(0xFF262830),
+                child: Center(
+                  child: Text(
+                    dest.flag,
+                    style: const TextStyle(fontSize: 60),
+                  ),
+                ),
               ),
             ),
 
-            // Dark gradient
+            // Dark gradient overlay so text is readable
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.3),
-                    Colors.black.withOpacity(0.8),
+                    Colors.black.withOpacity(0.05),
+                    Colors.black.withOpacity(0.35),
+                    Colors.black.withOpacity(0.85),
                   ],
                 ),
               ),
             ),
 
-            // Content
+            // Content overlay
             Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Score badge
-                  if (dest.petFriendlinessScore != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: dest.friendlinessColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${dest.petFriendlinessScore}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 6),
-
-                  // Country name + flag
+                  // Score badge + flag emoji
                   Row(
                     children: [
-                      Flexible(
-                        child: Text(
-                          dest.countryName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                      if (dest.petFriendlinessScore != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: dest.friendlinessColor,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          child: Text(
+                            '${dest.petFriendlinessScore}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(dest.flag, style: const TextStyle(fontSize: 14)),
+                      const Spacer(),
+                      Text(dest.flag, style: const TextStyle(fontSize: 20)),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Country name
+                  Text(
+                    dest.countryName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
 
                   const SizedBox(height: 4),

@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../models/pet.dart';
 import '../models/health_models.dart';
 import '../services/claude_proxy_service.dart';
 import '../services/pet_health_context.dart';
@@ -80,48 +79,40 @@ class VetChatState {
 
 class VetChatNotifier extends StateNotifier<VetChatState> {
   final ClaudeProxyService _claudeService;
-  final Pet? _pet;
-  final List<Biomarker> _biomarkers;
-  final List<Medication> _medications;
-  final List<HealthAlert> _healthAlerts;
-  final List<MedicalRecord> _medicalRecords;
-  final List<WalkSession> _walkSessions;
-  final List<PetDocument> _documents;
+  // Ref is used to lazily read health data at message-send time so that
+  // watching those async providers doesn't cause the notifier to rebuild
+  // (which would wipe the chat history every time Supabase data arrives).
+  final Ref _ref;
 
   static const _uuid = Uuid();
 
   VetChatNotifier({
     required ClaudeProxyService claudeService,
-    required Pet? pet,
-    List<Biomarker> biomarkers = const [],
-    List<Medication> medications = const [],
-    List<HealthAlert> healthAlerts = const [],
-    List<MedicalRecord> medicalRecords = const [],
-    List<WalkSession> walkSessions = const [],
-    List<PetDocument> documents = const [],
+    required Ref ref,
   })  : _claudeService = claudeService,
-        _pet = pet,
-        _biomarkers = biomarkers,
-        _medications = medications,
-        _healthAlerts = healthAlerts,
-        _medicalRecords = medicalRecords,
-        _walkSessions = walkSessions,
-        _documents = documents,
+        _ref = ref,
         super(const VetChatState());
 
-  /// Build the system prompt with current pet health context.
+  /// Build the system prompt by reading health data at call time.
   String get _systemPrompt {
-    if (_pet == null) {
+    final pet = _ref.read(selectedPetProvider);
+    if (pet == null) {
       return VetSystemPrompt.build(petContext: 'No pet selected.');
     }
+    final biomarkers = _ref.read(biomarkersProvider(pet.id)).valueOrNull ?? [];
+    final medications = _ref.read(medicationsProvider(pet.id)).valueOrNull ?? [];
+    final healthAlerts = _ref.read(healthAlertsProvider(pet.id)).valueOrNull ?? [];
+    final medicalRecords = _ref.read(medicalRecordsProvider(pet.id)).valueOrNull ?? [];
+    final walkSessions = _ref.read(walkSessionsProvider(pet.id)).valueOrNull ?? [];
+    final documents = _ref.read(documentsProvider(pet.id)).valueOrNull ?? [];
     final context = PetHealthContext.build(
-      pet: _pet,
-      biomarkers: _biomarkers,
-      medications: _medications,
-      healthAlerts: _healthAlerts,
-      medicalRecords: _medicalRecords,
-      walkSessions: _walkSessions,
-      documents: _documents,
+      pet: pet,
+      biomarkers: biomarkers,
+      medications: medications,
+      healthAlerts: healthAlerts,
+      medicalRecords: medicalRecords,
+      walkSessions: walkSessions,
+      documents: documents,
     );
     return VetSystemPrompt.build(petContext: context);
   }
@@ -247,43 +238,19 @@ final claudeProxyServiceProvider = Provider<ClaudeProxyService>((ref) {
   return ClaudeProxyService(config);
 });
 
-/// Provider for the vet chat notifier. Depends on the selected pet and health data.
+/// Provider for the vet chat notifier.
+/// Only rebuilds when the Claude service or selected pet ID changes — health
+/// data is read lazily at message-send time to avoid wiping chat history when
+/// Supabase queries resolve.
 final vetChatProvider =
     StateNotifierProvider<VetChatNotifier, VetChatState>((ref) {
   final claudeService = ref.watch(claudeProxyServiceProvider);
-  final pet = ref.watch(selectedPetProvider);
-
-  // Load health data if pet is available
-  List<Biomarker> biomarkers = [];
-  List<Medication> medications = [];
-  List<HealthAlert> healthAlerts = [];
-  List<MedicalRecord> medicalRecords = [];
-  List<WalkSession> walkSessions = [];
-  List<PetDocument> documents = [];
-
-  if (pet != null) {
-    biomarkers =
-        ref.watch(biomarkersProvider(pet.id)).valueOrNull ?? [];
-    medications =
-        ref.watch(medicationsProvider(pet.id)).valueOrNull ?? [];
-    healthAlerts =
-        ref.watch(healthAlertsProvider(pet.id)).valueOrNull ?? [];
-    medicalRecords =
-        ref.watch(medicalRecordsProvider(pet.id)).valueOrNull ?? [];
-    walkSessions =
-        ref.watch(walkSessionsProvider(pet.id)).valueOrNull ?? [];
-    documents =
-        ref.watch(documentsProvider(pet.id)).valueOrNull ?? [];
-  }
+  // Watch only the pet ID so switching pets resets the chat, but loading
+  // health data (biomarkers, meds, etc.) does NOT reset the conversation.
+  ref.watch(selectedPetIdProvider);
 
   return VetChatNotifier(
     claudeService: claudeService,
-    pet: pet,
-    biomarkers: biomarkers,
-    medications: medications,
-    healthAlerts: healthAlerts,
-    medicalRecords: medicalRecords,
-    walkSessions: walkSessions,
-    documents: documents,
+    ref: ref,
   );
 });
