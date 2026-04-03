@@ -3,29 +3,54 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../sdk/wellx_pets_config.dart';
+import 'supabase_client.dart';
 
 // ---------------------------------------------------------------------------
 // Claude Proxy Service
 // ---------------------------------------------------------------------------
-// Makes HTTP calls to the Anthropic Messages API.
+// Routes AI calls through the server-side proxy when [WellxPetsConfig.aiProxyUrl]
+// is configured (recommended for production — API key never leaves the server).
+// Falls back to direct Anthropic API calls when no proxy URL is set (useful
+// for local development, but the API key will be embedded in the binary).
+//
 // Ported from FureverApp's ClaudeProxyService.swift.
 
 class ClaudeProxyService {
   final WellxPetsConfig _config;
 
-  static const _endpoint = 'https://api.anthropic.com/v1/messages';
+  static const _directEndpoint = 'https://api.anthropic.com/v1/messages';
   static const _anthropicVersion = '2023-06-01';
   static const _timeout = Duration(seconds: 60);
 
   ClaudeProxyService(this._config);
 
+  // ── Routing ───────────────────────────────────────────────────────────────
+
+  /// Whether requests should route through the server-side proxy.
+  bool get _useProxy =>
+      _config.aiProxyUrl != null && _config.aiProxyUrl!.isNotEmpty;
+
   // ── Headers ──────────────────────────────────────────────────────────────
 
-  Map<String, String> get _headers => {
+  /// Headers for direct Anthropic API calls (used only when proxy is not set).
+  Map<String, String> get _directHeaders => {
         'Content-Type': 'application/json',
         'x-api-key': _config.anthropicApiKey,
         'anthropic-version': _anthropicVersion,
       };
+
+  /// Headers for requests to the server-side proxy (auth via Supabase JWT).
+  Map<String, String> get _proxyHeaders {
+    final session = SupabaseManager.instance.client.auth.currentSession;
+    final token = session?.accessToken ?? '';
+    return {
+      'Content-Type': 'application/json',
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  Uri get _proxyEndpoint =>
+      Uri.parse('${_config.aiProxyUrl}/functions/v1/ai-proxy');
 
   // ── Send text message ────────────────────────────────────────────────────
 
@@ -49,12 +74,11 @@ class ClaudeProxyService {
       body['system'] = systemPrompt;
     }
 
+    final endpoint = _useProxy ? _proxyEndpoint : Uri.parse(_directEndpoint);
+    final headers = _useProxy ? _proxyHeaders : _directHeaders;
+
     final response = await http
-        .post(
-          Uri.parse(_endpoint),
-          headers: _headers,
-          body: jsonEncode(body),
-        )
+        .post(endpoint, headers: headers, body: jsonEncode(body))
         .timeout(_timeout);
 
     return _extractText(response);
@@ -118,12 +142,11 @@ class ClaudeProxyService {
       body['system'] = systemPrompt;
     }
 
+    final endpoint = _useProxy ? _proxyEndpoint : Uri.parse(_directEndpoint);
+    final headers = _useProxy ? _proxyHeaders : _directHeaders;
+
     final response = await http
-        .post(
-          Uri.parse(_endpoint),
-          headers: _headers,
-          body: jsonEncode(body),
-        )
+        .post(endpoint, headers: headers, body: jsonEncode(body))
         .timeout(_timeout);
 
     return _extractText(response);
@@ -133,12 +156,11 @@ class ClaudeProxyService {
 
   /// Low-level call that returns the raw JSON-decoded response body.
   Future<Map<String, dynamic>> callRaw(Map<String, dynamic> body) async {
+    final endpoint = _useProxy ? _proxyEndpoint : Uri.parse(_directEndpoint);
+    final headers = _useProxy ? _proxyHeaders : _directHeaders;
+
     final response = await http
-        .post(
-          Uri.parse(_endpoint),
-          headers: _headers,
-          body: jsonEncode(body),
-        )
+        .post(endpoint, headers: headers, body: jsonEncode(body))
         .timeout(_timeout);
 
     if (response.statusCode != 200) {
@@ -172,10 +194,15 @@ class ClaudeProxyService {
   // ── Private helpers ──────────────────────────────────────────────────────
 
   String _extractText(http.Response response) {
+    if (response.statusCode == 429) {
+      throw const ClaudeProxyException(
+          'Too many requests. Please wait a moment and try again.');
+    }
     if (response.statusCode != 200) {
+      // Never surface raw API response bodies to users.
       throw ClaudeProxyException(
-        'API error (${response.statusCode}): ${response.body}',
-      );
+          'AI service temporarily unavailable (${response.statusCode}). '
+          'Please try again.');
     }
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     return _textFromBody(decoded);
@@ -205,5 +232,5 @@ class ClaudeProxyException implements Exception {
   const ClaudeProxyException(this.message);
 
   @override
-  String toString() => 'ClaudeProxyException: $message';
+  String toString() => message;
 }

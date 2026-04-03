@@ -11,18 +11,31 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Keys are injected at build time via --dart-define:
-  //   flutter run --dart-define=SUPABASE_ANON_KEY=... --dart-define=ANTHROPIC_API_KEY=...
+  //   flutter run \
+  //     --dart-define=SUPABASE_URL=... \
+  //     --dart-define=SUPABASE_ANON_KEY=... \
+  //     --dart-define=ANTHROPIC_API_KEY=...
+  const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
   const anthropicApiKey = String.fromEnvironment('ANTHROPIC_API_KEY');
 
-  assert(supabaseAnonKey.isNotEmpty,
-      'Missing SUPABASE_ANON_KEY — pass --dart-define=SUPABASE_ANON_KEY=<key>');
-  assert(anthropicApiKey.isNotEmpty,
-      'Missing ANTHROPIC_API_KEY — pass --dart-define=ANTHROPIC_API_KEY=<key>');
+  // Use if-throw instead of assert — asserts are stripped in release builds.
+  if (supabaseUrl.isEmpty) {
+    throw StateError(
+        'Missing SUPABASE_URL — pass --dart-define=SUPABASE_URL=<url>');
+  }
+  if (supabaseAnonKey.isEmpty) {
+    throw StateError(
+        'Missing SUPABASE_ANON_KEY — pass --dart-define=SUPABASE_ANON_KEY=<key>');
+  }
+  if (anthropicApiKey.isEmpty) {
+    throw StateError(
+        'Missing ANTHROPIC_API_KEY — pass --dart-define=ANTHROPIC_API_KEY=<key>');
+  }
 
   final sdk = await WellxPetsSDK.initialize(
-    config: const WellxPetsConfig(
-      supabaseUrl: 'https://raniqvhddcwfukvaljer.supabase.co',
+    config: WellxPetsConfig(
+      supabaseUrl: supabaseUrl,
       supabaseAnonKey: supabaseAnonKey,
       anthropicApiKey: anthropicApiKey,
     ),

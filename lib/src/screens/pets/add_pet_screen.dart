@@ -1,11 +1,8 @@
-import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../models/pet.dart';
 import '../../providers/auth_provider.dart';
@@ -35,7 +32,6 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
   bool _isNeutered = false;
   DateTime? _dateOfBirth;
   bool _isSaving = false;
-  XFile? _pickedPhoto;
   Uint8List? _photoBytes;
 
   @override
@@ -80,7 +76,6 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
 
     final bytes = await picked.readAsBytes();
     setState(() {
-      _pickedPhoto = picked;
       _photoBytes = bytes;
     });
   }
@@ -159,7 +154,9 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to add pet: $e'),
+            content: Text(e is Exception
+                ? e.toString()
+                : 'Could not save your pet. Please try again.'),
             backgroundColor: WellxColors.coral,
           ),
         );
@@ -316,6 +313,15 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
                       hint: 'e.g. 25.5',
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        final d = double.tryParse(v.trim());
+                        if (d == null) return 'Enter a valid number';
+                        if (d <= 0 || d > 200) {
+                          return 'Weight must be between 0.1 and 200 kg';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: WellxSpacing.lg),
 

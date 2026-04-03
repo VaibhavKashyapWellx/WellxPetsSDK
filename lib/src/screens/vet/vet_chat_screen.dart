@@ -206,6 +206,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 20),
             color: WellxColors.textTertiary,
+            tooltip: 'Clear chat history',
             onPressed: _showClearDialog,
           ),
       ],
@@ -310,7 +311,10 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
           ]),
           const SizedBox(height: WellxSpacing.lg),
           // Photo prompt
-          GestureDetector(
+          Semantics(
+            button: true,
+            label: 'Share a photo with Dr. Layla',
+            child: GestureDetector(
             onTap: _pickImage,
             child: Container(
               padding: const EdgeInsets.all(WellxSpacing.lg),
@@ -357,7 +361,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                 ],
               ),
             ),
-          ),
+          )),
         ],
       ),
     );
@@ -380,7 +384,10 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
           spacing: WellxSpacing.sm,
           runSpacing: WellxSpacing.sm,
           children: chips.map((chip) {
-            return GestureDetector(
+            return Semantics(
+              button: true,
+              label: chip,
+              child: GestureDetector(
               onTap: () => _sendChip(chip),
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -399,7 +406,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                   ),
                 ),
               ),
-            );
+            ));
           }).toList(),
         ),
       ],
@@ -428,7 +435,10 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
   Widget _buildMessageBubble(ChatMessage message) {
     final isUser = message.role == 'user';
 
-    return Padding(
+    return Semantics(
+      label: '${isUser ? 'You' : 'Dr. Layla'}: ${message.content}',
+      child: Padding(
+      key: const Key('chat_message_bubble'),
       padding: const EdgeInsets.only(bottom: WellxSpacing.md),
       child: Row(
         mainAxisAlignment:
@@ -551,7 +561,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
           if (isUser) const SizedBox(width: WellxSpacing.sm),
         ],
       ),
-    );
+    ));
   }
 
   // ── Typing Indicator ─────────────────────────────────────────────────────
@@ -713,7 +723,11 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
           child: Row(
             children: [
               // Camera button
-              GestureDetector(
+              Semantics(
+                button: true,
+                label: 'Attach photo',
+                enabled: !isLoading,
+                child: GestureDetector(
                 onTap: isLoading ? null : _pickImage,
                 child: Container(
                   width: 38,
@@ -731,7 +745,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                         : WellxColors.deepPurple,
                   ),
                 ),
-              ),
+              )),
               const SizedBox(width: WellxSpacing.sm),
               Expanded(
                 child: Container(
@@ -741,6 +755,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                     border: Border.all(color: WellxColors.border),
                   ),
                   child: TextField(
+                    key: const Key('chat_input_field'),
                     controller: _controller,
                     focusNode: _focusNode,
                     enabled: !isLoading,
@@ -766,7 +781,12 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                 ),
               ),
               const SizedBox(width: WellxSpacing.sm),
-              GestureDetector(
+              Semantics(
+                button: true,
+                label: 'Send message',
+                enabled: !isLoading,
+                child: GestureDetector(
+                key: const Key('chat_send_button'),
                 onTap: isLoading ? null : _sendMessage,
                 child: Container(
                   width: 40,
@@ -784,7 +804,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                     size: 20,
                   ),
                 ),
-              ),
+              )),
             ],
           ),
         ),

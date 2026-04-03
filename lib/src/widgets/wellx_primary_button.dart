@@ -10,6 +10,8 @@ class WellxPrimaryButton extends StatelessWidget {
   final bool isLoading;
   final IconData? icon;
   final bool fullWidth;
+  /// Optional custom accessibility label (defaults to [label]).
+  final String? semanticLabel;
 
   const WellxPrimaryButton({
     super.key,
@@ -18,11 +20,16 @@ class WellxPrimaryButton extends StatelessWidget {
     this.isLoading = false,
     this.icon,
     this.fullWidth = true,
+    this.semanticLabel,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Semantics(
+      button: true,
+      enabled: onPressed != null && !isLoading,
+      label: semanticLabel ?? label,
+      child: SizedBox(
       width: fullWidth ? double.infinity : null,
       child: Container(
         decoration: BoxDecoration(
@@ -65,7 +72,7 @@ class WellxPrimaryButton extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

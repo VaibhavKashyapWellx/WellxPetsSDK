@@ -156,7 +156,9 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update pet: $e'),
+            content: Text(e is Exception
+                ? e.toString()
+                : 'Could not update your pet. Please try again.'),
             backgroundColor: WellxColors.coral,
           ),
         );
@@ -332,6 +334,15 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
                       hint: 'e.g. 25.5',
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        final d = double.tryParse(v.trim());
+                        if (d == null) return 'Enter a valid number';
+                        if (d <= 0 || d > 200) {
+                          return 'Weight must be between 0.1 and 200 kg';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: WellxSpacing.lg),
 

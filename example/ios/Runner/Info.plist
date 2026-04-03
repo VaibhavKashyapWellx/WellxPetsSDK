@@ -47,6 +47,14 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>WellX Pets needs camera access to scan and photograph documents and analyze your pet's body condition.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>WellX Pets needs photo library access to upload pet photos and medical documents.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>WellX Pets needs permission to save photos to your library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>WellX Pets uses your location to find nearby vet-friendly venues and pet shelters.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

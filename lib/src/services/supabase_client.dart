@@ -35,24 +35,32 @@ class SupabaseManager {
       config.supabaseAnonKey,
     );
 
-    // Set initial session from host auth
+    // Set initial session from host auth.
+    // Prefer refresh token for full session restoration (enables auto-refresh).
+    // Fall back to access token for environments that don't provide a refresh token.
     final authState = authDelegate.currentAuthState;
-    if (authState.isAuthenticated && authState.accessToken != null) {
-      try {
-        await manager.client.auth.setSession(authState.accessToken!);
-      } catch (e) {
-        debugPrint('[WellxPetsSDK] Could not set initial session: $e');
+    if (authState.isAuthenticated) {
+      final token = authState.refreshToken ?? authState.accessToken;
+      if (token != null) {
+        try {
+          await manager.client.auth.setSession(token);
+        } catch (e) {
+          debugPrint('[WellxPetsSDK] Could not set initial session: $e');
+        }
       }
     }
 
     // Listen for auth state changes from host
     manager._authSubscription = authDelegate.authStateStream.listen(
       (state) async {
-        if (state.isAuthenticated && state.accessToken != null) {
-          try {
-            await manager.client.auth.setSession(state.accessToken!);
-          } catch (e) {
-            debugPrint('[WellxPetsSDK] Could not update session: $e');
+        if (state.isAuthenticated) {
+          final token = state.refreshToken ?? state.accessToken;
+          if (token != null) {
+            try {
+              await manager.client.auth.setSession(token);
+            } catch (e) {
+              debugPrint('[WellxPetsSDK] Could not update session: $e');
+            }
           }
         }
       },

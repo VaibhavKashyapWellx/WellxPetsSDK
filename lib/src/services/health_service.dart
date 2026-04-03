@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
 
 import '../models/health_models.dart';
@@ -298,12 +299,20 @@ class HealthService {
   }
 
   /// Upload a document file to Supabase storage and return the public URL.
+  ///
+  /// Enforces a [maxFileSizeBytes] limit (default 10 MB for documents).
   Future<String> uploadDocument({
     required String petId,
     required String fileName,
     required Uint8List fileData,
     required String contentType,
+    int maxFileSizeBytes = 10 * 1024 * 1024, // 10 MB
   }) async {
+    if (fileData.length > maxFileSizeBytes) {
+      final mb = (maxFileSizeBytes / (1024 * 1024)).round();
+      throw HealthServiceException(
+          'File is too large. Maximum allowed size is $mb MB.');
+    }
     try {
       final uuid = DateTime.now().millisecondsSinceEpoch.toString();
       final path = '$petId/${uuid}_$fileName';
@@ -390,8 +399,9 @@ class HealthService {
         'breakdown': breakdown,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
-    } catch (_) {
-      // Non-fatal — score history is a nice-to-have
+    } catch (e, st) {
+      // Non-fatal — score history is a nice-to-have, but log for monitoring.
+      debugPrint('[WellxPetsSDK] saveHealthScore failed (non-fatal): $e\n$st');
     }
   }
 
@@ -448,5 +458,5 @@ class HealthServiceException implements Exception {
   const HealthServiceException(this.message);
 
   @override
-  String toString() => 'HealthServiceException: $message';
+  String toString() => message;
 }

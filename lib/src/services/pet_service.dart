@@ -129,5 +129,5 @@ class PetServiceException implements Exception {
   const PetServiceException(this.message);
 
   @override
-  String toString() => 'PetServiceException: $message';
+  String toString() => message;
 }

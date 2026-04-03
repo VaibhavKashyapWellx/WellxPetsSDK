@@ -142,7 +142,23 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       // Upload file bytes to Supabase storage first
       final fileBytes = await picked.readAsBytes();
       final ext = picked.name.split('.').last.toLowerCase();
-      final contentType = ext == 'pdf' ? 'application/pdf' : 'image/$ext';
+
+      // Guard file size before upload (5 MB for photos, 10 MB for PDFs)
+      final isPdf = ext == 'pdf';
+      final maxBytes = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+      if (fileBytes.length > maxBytes) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'File is too large. Maximum size is ${isPdf ? '10' : '5'} MB.'),
+            backgroundColor: WellxColors.coral,
+          ),
+        );
+        return;
+      }
+
+      final contentType = isPdf ? 'application/pdf' : 'image/$ext';
       final fileUrl = await healthService.uploadDocument(
         petId: petId,
         fileName: picked.name,
@@ -170,9 +186,11 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       }
     } catch (e) {
       if (mounted) {
+        // Show user-friendly message; log details are in the exception itself.
+        final msg = e is Exception ? e.toString() : 'Something went wrong.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Upload failed: $e'),
+            content: Text(msg),
             backgroundColor: WellxColors.coral,
           ),
         );

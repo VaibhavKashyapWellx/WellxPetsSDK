@@ -1,3 +1,5 @@
+import 'package:geolocator/geolocator.dart';
+
 import '../models/venue_models.dart';
 import 'supabase_client.dart';
 
@@ -68,6 +70,33 @@ class VenueService {
     }
   }
 
+  /// Get the user's current position for distance calculations.
+  /// Returns null if permission is denied or location is unavailable.
+  Future<Position?> getCurrentPosition() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        final requested = await Geolocator.requestPermission();
+        if (requested == LocationPermission.denied ||
+            requested == LocationPermission.deniedForever) {
+          return null;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) return null;
+      return await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.low),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Calculate distance in kilometres between two coordinates.
+  double distanceKm(double lat1, double lng1, double lat2, double lng2) {
+    return Geolocator.distanceBetween(lat1, lng1, lat2, lng2) / 1000.0;
+  }
+
   /// Fetch available cities with venue counts.
   Future<List<VenueCity>> getAvailableCities() async {
     try {
@@ -90,5 +119,5 @@ class VenueServiceException implements Exception {
   const VenueServiceException(this.message);
 
   @override
-  String toString() => 'VenueServiceException: $message';
+  String toString() => message;
 }

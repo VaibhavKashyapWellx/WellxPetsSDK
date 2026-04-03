@@ -168,5 +168,5 @@ class TravelServiceException implements Exception {
   const TravelServiceException(this.message);
 
   @override
-  String toString() => 'TravelServiceException: $message';
+  String toString() => message;
 }
