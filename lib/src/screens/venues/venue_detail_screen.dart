@@ -30,7 +30,7 @@ class VenueDetailScreen extends StatelessWidget {
                   ? Image.network(
                       venue.imageUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           _placeholder(),
                     )
                   : _placeholder(),

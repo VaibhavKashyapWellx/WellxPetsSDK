@@ -1012,7 +1012,7 @@ class _WalksTab extends StatelessWidget {
                       const SizedBox(width: WellxSpacing.md),
                       _WalkStat(
                         icon: Icons.straighten,
-                        value: '${walk.distanceKm!.toStringAsFixed(1)}',
+                        value: walk.distanceKm!.toStringAsFixed(1),
                         label: 'km',
                       ),
                     ],

@@ -96,7 +96,7 @@ class ShelterDogsListScreen extends ConsumerWidget {
                   ? Image.network(
                       dog.photoUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _dogPlaceholder(),
+                      errorBuilder: (_, _, _) => _dogPlaceholder(),
                     )
                   : _dogPlaceholder(),
             ),
@@ -221,7 +221,7 @@ class ShelterDogsListScreen extends ConsumerWidget {
                     height: 250,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => SizedBox(
+                    errorBuilder: (_, _, _) => SizedBox(
                       height: 200,
                       child: _dogPlaceholder(),
                     ),

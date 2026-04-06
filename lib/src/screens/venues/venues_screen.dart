@@ -497,8 +497,8 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
                   ? CachedNetworkImage(
                       imageUrl: venue.imageUrl!,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => const ColoredBox(color: WellxColors.flatCardFill),
-                      errorWidget: (_, __, ___) => _picsumPlaceholder(venue),
+                      placeholder: (_, _) => const ColoredBox(color: WellxColors.flatCardFill),
+                      errorWidget: (_, _, _) => _picsumPlaceholder(venue),
                     )
                   : _picsumPlaceholder(venue),
             ),
@@ -599,8 +599,8 @@ class _VenuesScreenState extends ConsumerState<VenuesScreen> {
         CachedNetworkImage(
           imageUrl: _venueImageUrl(venue),
           fit: BoxFit.cover,
-          placeholder: (_, __) => const ColoredBox(color: WellxColors.flatCardFill),
-          errorWidget: (_, __, ___) => _categoryPlaceholder(venue),
+          placeholder: (_, _) => const ColoredBox(color: WellxColors.flatCardFill),
+          errorWidget: (_, _, _) => _categoryPlaceholder(venue),
         ),
         // Subtle tinted overlay to unify with the app's palette
         Container(

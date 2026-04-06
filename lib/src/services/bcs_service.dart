@@ -39,7 +39,7 @@ class BCSService {
           })
           .select()
           .single();
-      return response as Map<String, dynamic>;
+      return response;
     } catch (e) {
       throw BCSServiceException('Failed to save BCS result: $e');
     }

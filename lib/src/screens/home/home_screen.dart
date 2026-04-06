@@ -10,7 +10,7 @@ import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
 import '../../widgets/wellx_card.dart';
-import '../../widgets/wellx_loading_widget.dart';
+import '../../widgets/shimmer_loading.dart';
 import 'daily_plan_card.dart';
 import 'furever_impact_section.dart';
 

@@ -8,7 +8,6 @@ import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
 import '../../widgets/wellx_card.dart';
-import '../../widgets/wellx_primary_button.dart';
 import 'edit_pet_screen.dart';
 
 /// Pet profile screen showing details and action buttons.

@@ -6,7 +6,6 @@ import '../../providers/travel_provider.dart';
 import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
-import '../../widgets/wellx_loading_widget.dart';
 import 'destination_detail_screen.dart';
 import 'airline_comparison_screen.dart';
 
@@ -80,7 +79,7 @@ class TravelScreen extends ConsumerWidget {
                 );
               },
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
 
             const SizedBox(height: WellxSpacing.lg),
@@ -92,7 +91,7 @@ class TravelScreen extends ConsumerWidget {
                 return _myPlansSection(context, plans, ref);
               },
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
 
             // Destinations grid
@@ -385,8 +384,8 @@ class TravelScreen extends ConsumerWidget {
             CachedNetworkImage(
               imageUrl: _destinationImageUrl(dest.countryName),
               fit: BoxFit.cover,
-              placeholder: (_, __) => Container(color: const Color(0xFF262830)),
-              errorWidget: (_, __, ___) => Container(
+              placeholder: (_, _) => Container(color: const Color(0xFF262830)),
+              errorWidget: (_, _, _) => Container(
                 color: const Color(0xFF262830),
                 child: Center(
                   child: Text(dest.flag, style: const TextStyle(fontSize: 60)),

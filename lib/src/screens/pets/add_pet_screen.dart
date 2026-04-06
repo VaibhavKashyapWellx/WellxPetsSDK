@@ -1,7 +1,5 @@
-import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -35,7 +33,6 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
   bool _isNeutered = false;
   DateTime? _dateOfBirth;
   bool _isSaving = false;
-  XFile? _pickedPhoto;
   Uint8List? _photoBytes;
 
   @override
@@ -80,7 +77,6 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
 
     final bytes = await picked.readAsBytes();
     setState(() {
-      _pickedPhoto = picked;
       _photoBytes = bytes;
     });
   }
@@ -328,7 +324,7 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
                         Switch(
                           value: _isNeutered,
                           onChanged: (v) => setState(() => _isNeutered = v),
-                          activeColor: WellxColors.deepPurple,
+                          activeThumbColor: WellxColors.deepPurple,
                         ),
                       ],
                     ),

@@ -344,7 +344,7 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
                         Switch(
                           value: _isNeutered,
                           onChanged: (v) => setState(() => _isNeutered = v),
-                          activeColor: WellxColors.deepPurple,
+                          activeThumbColor: WellxColors.deepPurple,
                         ),
                       ],
                     ),

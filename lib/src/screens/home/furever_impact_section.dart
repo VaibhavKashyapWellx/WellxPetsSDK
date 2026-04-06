@@ -72,7 +72,7 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
           impactAsync.when(
             data: (impact) => _impactStatsSection(impact),
             loading: () => const SizedBox(height: 80),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
 
           // Section 3: Featured dogs
@@ -87,7 +87,7 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
               );
             },
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
 
           // Section 4: Help shelter CTA
@@ -372,7 +372,7 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
                   ? Image.network(
                       dog.photoUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _dogPlaceholder(),
+                      errorBuilder: (_, _, _) => _dogPlaceholder(),
                     )
                   : _dogPlaceholder(),
             ),

@@ -10,7 +10,7 @@
 /// // Embed in your widget tree:
 /// sdk.buildRootWidget()
 /// ```
-library wellx_pets_sdk;
+library;
 
 // SDK interface
 export 'src/sdk/wellx_pets_sdk.dart';

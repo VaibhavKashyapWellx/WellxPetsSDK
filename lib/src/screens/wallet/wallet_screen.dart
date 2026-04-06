@@ -9,7 +9,6 @@ import '../../models/pet.dart';
 import '../../providers/credit_provider.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/pet_provider.dart';
-import '../../services/health_service.dart';
 import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
@@ -38,8 +37,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     'Other',
   ];
 
-  Future<void> _uploadDocument(
-      BuildContext context, WidgetRef ref, String? petId) async {
+  Future<void> _uploadDocument(String? petId) async {
     if (petId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select a pet first')),
@@ -221,7 +219,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                     Text('Records', style: WellxTypography.screenTitle),
                     const Spacer(),
                     GestureDetector(
-                      onTap: () => _uploadDocument(context, ref, petId),
+                      onTap: () => _uploadDocument(petId),
                       child: Container(
                         width: 30,
                         height: 30,
@@ -256,7 +254,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   petName: selectedPet?.name ?? 'Your Pet',
                   petEmoji: selectedPet?.speciesEmoji ?? '\u{1F415}',
                   docCount: documents.length,
-                  onUpload: () => _uploadDocument(context, ref, petId),
+                  onUpload: () => _uploadDocument(petId),
                   onScan: () => context.push('/ocr-scan'),
                 ),
               ),

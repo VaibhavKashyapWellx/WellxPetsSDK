@@ -57,7 +57,7 @@ class _ShelterImpactCardState extends ConsumerState<ShelterImpactCard>
           ),
         ),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 

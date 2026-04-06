@@ -535,8 +535,6 @@ class _TrackScreenState extends ConsumerState<TrackScreen>
 
   Widget _buildBloodTestCard() {
     const gradientColors = [Color(0xFF1B6B4A), Color(0xFF2E9E6A)];
-    const accentColor = Color(0xFF2E9E6A);
-
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(

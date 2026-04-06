@@ -40,7 +40,7 @@ class ShelterDirectoryScreen extends ConsumerWidget {
             poolAsync.when(
               data: (pool) => _communityPoolCard(pool),
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
 
             const SizedBox(height: WellxSpacing.lg),
@@ -294,7 +294,7 @@ class ShelterDirectoryScreen extends ConsumerWidget {
                 ? Image.network(
                     shelter.photoUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
+                    errorBuilder: (_, _, _) =>
                         _shelterPlaceholder(shelter),
                   )
                 : _shelterPlaceholder(shelter),

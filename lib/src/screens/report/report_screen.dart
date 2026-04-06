@@ -179,7 +179,7 @@ Future<void> _exportHealthReport({
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   _infoRow('Name', pet.name),
-                  if (pet.breed != null) _infoRow('Breed', pet.breed!),
+                  _infoRow('Breed', pet.breed),
                   if (pet.species != null)
                     _infoRow('Species', pet.species!.toUpperCase()),
                   if (pet.weight != null)

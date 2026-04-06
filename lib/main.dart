@@ -4,8 +4,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'wellx_pets_sdk.dart';
-import 'src/sdk/auth_delegate.dart';
-import 'src/sdk/xcoin_delegate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

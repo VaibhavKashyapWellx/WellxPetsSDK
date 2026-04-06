@@ -26,8 +26,8 @@ class CreditService {
           .eq('owner_id', ownerId)
           .limit(1);
 
-      if ((existing as List).isNotEmpty) {
-        return CreditWallet.fromJson(existing.first as Map<String, dynamic>);
+      if (existing.isNotEmpty) {
+        return CreditWallet.fromJson(existing.first);
       }
 
       // Create new wallet with zero balances
@@ -62,8 +62,8 @@ class CreditService {
           .eq('owner_id', ownerId)
           .limit(1);
 
-      if ((result as List).isEmpty) return null;
-      return CreditWallet.fromJson(result.first as Map<String, dynamic>);
+      if (result.isEmpty) return null;
+      return CreditWallet.fromJson(result.first);
     } catch (e) {
       throw CreditServiceException('Failed to fetch wallet: $e');
     }

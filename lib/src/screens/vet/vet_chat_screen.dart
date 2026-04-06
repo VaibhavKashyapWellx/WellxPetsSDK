@@ -845,7 +845,7 @@ class _TypingDotsState extends State<_TypingDots>
       children: List.generate(3, (i) {
         return AnimatedBuilder(
           animation: _anims[i],
-          builder: (_, __) {
+          builder: (_, _) {
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 2.5),
               width: 7,

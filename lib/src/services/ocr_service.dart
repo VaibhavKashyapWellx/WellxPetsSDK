@@ -94,7 +94,7 @@ class DocumentAnalysisResult {
           medications.add(item);
         }
       } else if (currentSection == 'notes') {
-        notes = (notes ?? '') + ' $trimmed';
+        notes = '${notes ?? ''} $trimmed';
       }
     }
 
