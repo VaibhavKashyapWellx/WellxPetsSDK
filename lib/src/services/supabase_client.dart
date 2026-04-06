@@ -35,11 +35,12 @@ class SupabaseManager {
       config.supabaseAnonKey,
     );
 
-    // Set initial session from host auth
+    // Set initial session from host auth.
+    // setSession() expects a refresh token, not an access token.
     final authState = authDelegate.currentAuthState;
-    if (authState.isAuthenticated && authState.accessToken != null) {
+    if (authState.isAuthenticated && authState.refreshToken != null) {
       try {
-        await manager.client.auth.setSession(authState.accessToken!);
+        await manager.client.auth.setSession(authState.refreshToken!);
       } catch (e) {
         debugPrint('[WellxPetsSDK] Could not set initial session: $e');
       }
@@ -48,9 +49,9 @@ class SupabaseManager {
     // Listen for auth state changes from host
     manager._authSubscription = authDelegate.authStateStream.listen(
       (state) async {
-        if (state.isAuthenticated && state.accessToken != null) {
+        if (state.isAuthenticated && state.refreshToken != null) {
           try {
-            await manager.client.auth.setSession(state.accessToken!);
+            await manager.client.auth.setSession(state.refreshToken!);
           } catch (e) {
             debugPrint('[WellxPetsSDK] Could not update session: $e');
           }
