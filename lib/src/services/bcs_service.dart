@@ -91,8 +91,12 @@ class BCSService {
     required String fileName,
   }) async {
     try {
+      final userId = SupabaseManager.instance.client.auth.currentUser?.id;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final path = '$petId/bcs_${timestamp}_$fileName';
+      // Path must start with auth.uid() to satisfy storage RLS policies
+      final path = userId != null
+          ? '$userId/$petId/bcs_${timestamp}_$fileName'
+          : '$petId/bcs_${timestamp}_$fileName';
       const bucket = 'pet-documents';
 
       await SupabaseManager.instance.client.storage

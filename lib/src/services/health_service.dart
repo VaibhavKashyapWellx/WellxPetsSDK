@@ -305,8 +305,12 @@ class HealthService {
     required String contentType,
   }) async {
     try {
+      final userId = SupabaseManager.instance.client.auth.currentUser?.id;
       final uuid = DateTime.now().millisecondsSinceEpoch.toString();
-      final path = '$petId/${uuid}_$fileName';
+      // Path must start with auth.uid() to satisfy storage RLS policies
+      final path = userId != null
+          ? '$userId/$petId/${uuid}_$fileName'
+          : '$petId/${uuid}_$fileName';
       const bucket = 'pet-documents';
 
       await SupabaseManager.instance.client.storage
