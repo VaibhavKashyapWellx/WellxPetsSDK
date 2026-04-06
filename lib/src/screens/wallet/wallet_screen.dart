@@ -1,8 +1,6 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
@@ -121,21 +119,6 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               subtitle: const Text('Select a photo from your gallery'),
               onTap: () => Navigator.pop(ctx, 'gallery'),
             ),
-            ListTile(
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: WellxColors.alertGreen.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.attach_file_rounded,
-                    color: WellxColors.alertGreen, size: 20),
-              ),
-              title: const Text('Choose File'),
-              subtitle: const Text('Select a PDF or document file'),
-              onTap: () => Navigator.pop(ctx, 'file'),
-            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -143,38 +126,19 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     );
     if (sourceChoice == null || !mounted) return;
 
-    // Pick the file based on source
-    String fileName;
-    Uint8List fileBytes;
+    // Pick the image based on source
+    final picker = ImagePicker();
+    final source = sourceChoice == 'camera' ? ImageSource.camera : ImageSource.gallery;
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 2048,
+      maxHeight: 2048,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
 
-    if (sourceChoice == 'file') {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg', 'heic', 'doc', 'docx'],
-      );
-      if (result == null || result.files.isEmpty || !mounted) return;
-      final file = result.files.first;
-      if (file.bytes != null) {
-        fileBytes = file.bytes!;
-      } else if (file.path != null) {
-        fileBytes = await XFile(file.path!).readAsBytes();
-      } else {
-        return;
-      }
-      fileName = file.name;
-    } else {
-      final picker = ImagePicker();
-      final source = sourceChoice == 'camera' ? ImageSource.camera : ImageSource.gallery;
-      final picked = await picker.pickImage(
-        source: source,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 85,
-      );
-      if (picked == null || !mounted) return;
-      fileBytes = await picked.readAsBytes();
-      fileName = picked.name;
-    }
+    final fileBytes = await picked.readAsBytes();
+    final fileName = picked.name;
 
     try {
       final healthService = ref.read(healthServiceProvider);
