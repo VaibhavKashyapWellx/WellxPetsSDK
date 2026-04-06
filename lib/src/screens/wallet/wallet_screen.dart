@@ -1,10 +1,13 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../models/health_models.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/pet.dart';
 import '../../providers/credit_provider.dart';
 import '../../providers/health_provider.dart';
@@ -67,8 +70,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     );
     if (category == null || !mounted) return;
 
-    // Let user choose camera or gallery
-    final source = await showModalBottomSheet<ImageSource>(
+    // Let user choose camera, gallery, or file
+    final sourceChoice = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: WellxColors.background,
       shape: const RoundedRectangleBorder(
@@ -101,7 +104,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               ),
               title: const Text('Take Photo'),
               subtitle: const Text('Use camera to photograph a document'),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              onTap: () => Navigator.pop(ctx, 'camera'),
             ),
             ListTile(
               leading: Container(
@@ -115,35 +118,78 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                     color: WellxColors.scoreBlue, size: 20),
               ),
               title: const Text('Choose from Gallery'),
-              subtitle: const Text('Select an existing file'),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              subtitle: const Text('Select a photo from your gallery'),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: WellxColors.alertGreen.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.attach_file_rounded,
+                    color: WellxColors.alertGreen, size: 20),
+              ),
+              title: const Text('Choose File'),
+              subtitle: const Text('Select a PDF or document file'),
+              onTap: () => Navigator.pop(ctx, 'file'),
             ),
             const SizedBox(height: 8),
           ],
         ),
       ),
     );
-    if (source == null || !mounted) return;
+    if (sourceChoice == null || !mounted) return;
 
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: source,
-      maxWidth: 2048,
-      maxHeight: 2048,
-      imageQuality: 85,
-    );
-    if (picked == null || !mounted) return;
+    // Pick the file based on source
+    String fileName;
+    Uint8List fileBytes;
+
+    if (sourceChoice == 'file') {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg', 'heic', 'doc', 'docx'],
+      );
+      if (result == null || result.files.isEmpty || !mounted) return;
+      final file = result.files.first;
+      if (file.bytes != null) {
+        fileBytes = file.bytes!;
+      } else if (file.path != null) {
+        fileBytes = await XFile(file.path!).readAsBytes();
+      } else {
+        return;
+      }
+      fileName = file.name;
+    } else {
+      final picker = ImagePicker();
+      final source = sourceChoice == 'camera' ? ImageSource.camera : ImageSource.gallery;
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      fileBytes = await picked.readAsBytes();
+      fileName = picked.name;
+    }
 
     try {
       final healthService = ref.read(healthServiceProvider);
+      final userId = ref.read(currentAuthProvider).userId;
 
       // Upload file bytes to Supabase storage first
-      final fileBytes = await picked.readAsBytes();
-      final ext = picked.name.split('.').last.toLowerCase();
-      final contentType = ext == 'pdf' ? 'application/pdf' : 'image/$ext';
+      final ext = fileName.split('.').last.toLowerCase();
+      final contentType = switch (ext) {
+        'pdf' => 'application/pdf',
+        'doc' || 'docx' => 'application/msword',
+        _ => 'image/$ext',
+      };
       final fileUrl = await healthService.uploadDocument(
         petId: petId,
-        fileName: picked.name,
+        fileName: fileName,
         fileData: fileBytes,
         contentType: contentType,
       );
@@ -152,7 +198,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       final doc = DocumentCreate(
         id: const Uuid().v4(),
         petId: petId,
-        title: picked.name.split('.').first,
+        ownerId: userId,
+        title: fileName.split('.').first,
         date: DateTime.now().toIso8601String().split('T').first,
         category: category,
         fileType: ext,

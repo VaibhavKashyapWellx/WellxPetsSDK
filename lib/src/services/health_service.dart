@@ -305,15 +305,20 @@ class HealthService {
     required String contentType,
   }) async {
     try {
-      final userId = SupabaseManager.instance.client.auth.currentUser?.id;
+      final client = SupabaseManager.instance.client;
+      final userId = client.auth.currentUser?.id;
+
+      if (userId == null) {
+        throw HealthServiceException(
+            'Not authenticated — sign in before uploading');
+      }
+
       final uuid = DateTime.now().millisecondsSinceEpoch.toString();
-      // Path must start with auth.uid() to satisfy storage RLS policies
-      final path = userId != null
-          ? '$userId/$petId/${uuid}_$fileName'
-          : '$petId/${uuid}_$fileName';
+      // Path starts with auth.uid() to satisfy storage RLS policies
+      final path = '$userId/$petId/${uuid}_$fileName';
       const bucket = 'pet-documents';
 
-      await SupabaseManager.instance.client.storage
+      await client.storage
           .from(bucket)
           .uploadBinary(
             path,

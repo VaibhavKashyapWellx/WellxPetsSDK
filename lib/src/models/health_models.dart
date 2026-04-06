@@ -735,6 +735,7 @@ class PetDocument {
 class DocumentCreate {
   final String id;
   final String petId;
+  final String? ownerId;
   final String title;
   final String date;
   final String? fileType;
@@ -744,6 +745,7 @@ class DocumentCreate {
   const DocumentCreate({
     required this.id,
     required this.petId,
+    this.ownerId,
     required this.title,
     required this.date,
     this.fileType,
@@ -755,6 +757,7 @@ class DocumentCreate {
     return {
       'id': id,
       'pet_id': petId,
+      if (ownerId != null) 'owner_id': ownerId,
       'title': title,
       'date': date,
       'file_type': fileType,
