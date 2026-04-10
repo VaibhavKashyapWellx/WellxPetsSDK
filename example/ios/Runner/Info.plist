@@ -47,6 +47,12 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Wellx Pet needs camera access to scan your pet's body condition</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Wellx Pet needs photo library access to upload pet photos and documents</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Wellx Pet needs microphone access for video capture</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
