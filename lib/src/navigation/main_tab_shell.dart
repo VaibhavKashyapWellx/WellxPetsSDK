@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,7 +7,7 @@ import '../theme/wellx_spacing.dart';
 
 /// The 5-tab shell that wraps all main screens.
 ///
-/// Mirrors FureverApp's MainTabView with a dark floating pill tab bar.
+/// "Digital Sanctuary" floating glass island navigation bar.
 /// Tabs: Home, Reports, Layla (center hero), Check, Records.
 class MainTabShell extends StatelessWidget {
   final Widget child;
@@ -16,9 +17,9 @@ class MainTabShell extends StatelessWidget {
   static const _tabs = [
     _TabItem(path: '/home', icon: Icons.home_rounded, label: 'Home'),
     _TabItem(path: '/reports', icon: Icons.description_outlined, label: 'Reports'),
-    _TabItem(path: '/vet', icon: Icons.favorite_rounded, label: 'Layla', isCenter: true),
+    _TabItem(path: '/vet', icon: Icons.auto_awesome_rounded, label: 'Layla', isCenter: true),
     _TabItem(path: '/track', icon: Icons.crop_free_rounded, label: 'Check'),
-    _TabItem(path: '/wallet', icon: Icons.inbox_rounded, label: 'Records'),
+    _TabItem(path: '/wallet', icon: Icons.folder_rounded, label: 'Records'),
   ];
 
   int _currentIndex(BuildContext context) {
@@ -35,6 +36,7 @@ class MainTabShell extends StatelessWidget {
 
     return Scaffold(
       body: child,
+      extendBody: true,
       bottomNavigationBar: _FloatingTabBar(
         currentIndex: currentIndex,
         onTap: (index) => context.go(_tabs[index].path),
@@ -58,7 +60,10 @@ class _TabItem {
   });
 }
 
-/// Dark floating pill tab bar (matches FureverApp's ink tab bar).
+/// Floating glass "island" navigation bar — signature Digital Sanctuary element.
+///
+/// Glassmorphism: surface-container-highest at 80% opacity with heavy backdrop blur.
+/// Detached from screen edges.
 class _FloatingTabBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -72,48 +77,54 @@ class _FloatingTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).padding.bottom + 8,
-        left: WellxSpacing.lg,
-        right: WellxSpacing.lg,
+        bottom: bottomPadding + 8,
+        left: WellxSpacing.xl,
+        right: WellxSpacing.xl,
         top: WellxSpacing.sm,
       ),
-      color: Colors.transparent,
-      child: Container(
-        height: 64,
-        decoration: BoxDecoration(
-          gradient: WellxColors.inkGradient,
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: WellxColors.inkPrimary.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            height: 68,
+            decoration: BoxDecoration(
+              color: WellxColors.surfaceContainerHighest.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: WellxColors.onSurface.withValues(alpha: 0.06),
+                  blurRadius: 32,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(tabs.length, (index) {
-            final tab = tabs[index];
-            final isSelected = index == currentIndex;
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(tabs.length, (index) {
+                final tab = tabs[index];
+                final isSelected = index == currentIndex;
 
-            if (tab.isCenter) {
-              return _CenterTabButton(
-                icon: tab.icon,
-                isSelected: isSelected,
-                onTap: () => onTap(index),
-              );
-            }
+                if (tab.isCenter) {
+                  return _CenterTabButton(
+                    icon: tab.icon,
+                    isSelected: isSelected,
+                    onTap: () => onTap(index),
+                  );
+                }
 
-            return _TabButton(
-              icon: tab.icon,
-              label: tab.label,
-              isSelected: isSelected,
-              onTap: () => onTap(index),
-            );
-          }),
+                return _TabButton(
+                  icon: tab.icon,
+                  label: tab.label,
+                  isSelected: isSelected,
+                  onTap: () => onTap(index),
+                );
+              }),
+            ),
+          ),
         ),
       ),
     );
@@ -145,16 +156,20 @@ class _TabButton extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.4),
+              color: isSelected
+                  ? WellxColors.primary
+                  : WellxColors.onSurfaceVariant.withValues(alpha: 0.5),
               size: 24,
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.4),
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected
+                    ? WellxColors.primary
+                    : WellxColors.onSurfaceVariant.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -164,7 +179,7 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-/// Center hero button (Layla AI Vet) with glowing circle when active.
+/// Center hero button (Layla AI) with gradient when active.
 class _CenterTabButton extends StatelessWidget {
   final IconData icon;
   final bool isSelected;
@@ -185,19 +200,13 @@ class _CenterTabButton extends StatelessWidget {
         height: 48,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: isSelected
-              ? const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [WellxColors.midPurple, WellxColors.deepPurple],
-                )
-              : null,
-          color: isSelected ? null : Colors.white.withValues(alpha: 0.15),
+          gradient: isSelected ? WellxColors.accentGradient : null,
+          color: isSelected ? null : WellxColors.surfaceContainer,
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: WellxColors.deepPurple.withValues(alpha: 0.4),
-                    blurRadius: 12,
+                    color: WellxColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
                 ]
@@ -205,7 +214,7 @@ class _CenterTabButton extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          color: Colors.white,
+          color: isSelected ? Colors.white : WellxColors.onSurfaceVariant,
           size: 22,
         ),
       ),

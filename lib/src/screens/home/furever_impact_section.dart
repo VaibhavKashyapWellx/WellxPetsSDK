@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../models/shelter_models.dart';
 import '../../providers/shelter_provider.dart';
 import '../../theme/wellx_colors.dart';
@@ -9,7 +10,11 @@ import '../../theme/wellx_spacing.dart';
 import 'shelter_directory_screen.dart';
 import 'shelter_dogs_list_screen.dart';
 
-/// Section in HomeScreen showing community impact with donation CTA.
+/// Compact community impact section for the HomeScreen.
+///
+/// Shows a condensed balance card, community progress, featured dogs,
+/// and a CTA to the full shelter directory. Matches the "Help Shelters"
+/// design language in compact form.
 class FureverImpactSection extends ConsumerStatefulWidget {
   final int coinsBalance;
 
@@ -53,115 +58,143 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
     final impactAsync = ref.watch(shelterImpactProvider);
     final dogsAsync = ref.watch(featuredDogsProvider);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: WellxColors.cardSurface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: WellxColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section 1: How it works
-          _howItWorksSection(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Compact Balance + CTA Card ──
+        _compactBalanceCard(context),
 
-          _sectionDivider(),
+        const SizedBox(height: WellxSpacing.lg),
 
-          // Section 2: Impact stats
-          impactAsync.when(
-            data: (impact) => _impactStatsSection(impact),
-            loading: () => const SizedBox(height: 80),
-            error: (_, __) => const SizedBox.shrink(),
-          ),
+        // ── Impact Stats ──
+        impactAsync.when(
+          data: (impact) => _impactStatsRow(impact),
+          loading: () => const SizedBox(height: 80),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
 
-          // Section 3: Featured dogs
-          dogsAsync.when(
-            data: (dogs) {
-              if (dogs.isEmpty) return const SizedBox.shrink();
-              return Column(
-                children: [
-                  _sectionDivider(),
-                  _shelterDogsSection(context, dogs),
-                ],
-              );
-            },
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-          ),
+        // ── Featured Dogs ──
+        dogsAsync.when(
+          data: (dogs) {
+            if (dogs.isEmpty) return const SizedBox.shrink();
+            return Column(
+              children: [
+                const SizedBox(height: WellxSpacing.lg),
+                _shelterDogsSection(context, dogs),
+              ],
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
 
-          // Section 4: Help shelter CTA
-          _sectionDivider(),
-          _helpShelterCTA(context),
-        ],
-      ),
+        const SizedBox(height: WellxSpacing.lg),
+
+        // ── Help Shelter CTA ──
+        _helpShelterCTA(context),
+      ],
     );
   }
 
-  Widget _howItWorksSection() {
-    return Padding(
-      padding: const EdgeInsets.all(WellxSpacing.lg),
-      child: Column(
+  // ─────────────────────────────────────────────────────────────────────────
+  // Compact Balance Card (dark hero style)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _compactBalanceCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: WellxColors.onPrimaryFixedVariant,
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          // Header
-          Row(
-            children: [
-              Icon(Icons.autorenew,
-                  size: 14, color: WellxColors.deepPurple),
-              const SizedBox(width: 6),
-              Text(
-                'YOUR IMPACT',
-                style: WellxTypography.sectionLabel.copyWith(
-                  color: WellxColors.textSecondary,
-                  letterSpacing: 1.2,
-                ),
+          // Decorative blur orb
+          Positioned(
+            right: -30,
+            top: -30,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: WellxColors.primaryFixedDim.withValues(alpha: 0.20),
               ),
-            ],
-          ),
-
-          const SizedBox(height: WellxSpacing.lg),
-
-          // 3 step bubbles
-          Row(
-            children: [
-              _stepBubble(Icons.favorite, 'Track\nHealth', WellxColors.coral),
-              _dashedConnector(),
-              _stepBubble(Icons.star, 'Earn\nCoins', WellxColors.amberWatch),
-              _dashedConnector(),
-              _stepBubble(
-                  Icons.pets, 'Help\nDogs', WellxColors.scoreGreen),
-            ],
-          ),
-
-          const SizedBox(height: WellxSpacing.md),
-
-          Text(
-            'Every health check you complete earns coins that help shelter dogs',
-            style: WellxTypography.captionText,
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: WellxSpacing.sm),
-
-          // Real impact badge
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: WellxColors.deepPurple.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(10),
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(WellxSpacing.cardPadding),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.verified,
-                    size: 12, color: WellxColors.deepPurple),
-                const SizedBox(width: 6),
-                Text(
-                  'Real donations \u{2014} every coin feeds shelter dogs',
-                  style: WellxTypography.microLabel.copyWith(
-                    color: WellxColors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                // Balance info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Balance',
+                        style: WellxTypography.smallLabel.copyWith(
+                          color:
+                              WellxColors.onPrimary.withValues(alpha: 0.80),
+                        ),
+                      ),
+                      const SizedBox(height: WellxSpacing.xs),
+                      Row(
+                        children: [
+                          Text(
+                            widget.coinsBalance > 0
+                                ? _formatWithCommas(widget.coinsBalance)
+                                : '0',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: WellxColors.onPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: WellxSpacing.sm),
+                          Icon(
+                            Icons.generating_tokens,
+                            color: WellxColors.tertiaryContainer,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Earn More pill
+                GestureDetector(
+                  onTap: () {
+                    // Navigate to earn more (could be home/daily tasks)
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: WellxColors.primaryContainer,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Earn More',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: WellxColors.onPrimaryContainer,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.arrow_forward,
+                          size: 14,
+                          color: WellxColors.onPrimaryContainer,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -172,45 +205,18 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
     );
   }
 
-  Widget _stepBubble(IconData icon, String label, Color color) {
-    return Expanded(
-      child: Column(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 18, color: color),
-          ),
-          const SizedBox(height: WellxSpacing.sm),
-          Text(
-            label,
-            style: WellxTypography.microLabel,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Impact Stats Row (animated rings)
+  // ─────────────────────────────────────────────────────────────────────────
 
-  Widget _dashedConnector() {
-    return SizedBox(
-      width: 24,
-      child: CustomPaint(
-        size: const Size(24, 1),
-        painter: _DashedLinePainter(
-          color: WellxColors.textTertiary.withValues(alpha: 0.3),
-        ),
+  Widget _impactStatsRow(ShelterImpact impact) {
+    return Container(
+      padding: const EdgeInsets.all(WellxSpacing.cardPadding),
+      decoration: BoxDecoration(
+        color: WellxColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+        boxShadow: WellxColors.subtleShadow,
       ),
-    );
-  }
-
-  Widget _impactStatsSection(ShelterImpact impact) {
-    return Padding(
-      padding: const EdgeInsets.all(WellxSpacing.lg),
       child: AnimatedBuilder(
         animation: _ringAnimation,
         builder: (context, _) {
@@ -235,7 +241,7 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
                 maxValue: max(impact.sheltersPartnered, 20),
                 label: 'Partner\nShelters',
                 icon: Icons.house,
-                color: WellxColors.deepPurple,
+                color: WellxColors.primary,
               ),
             ],
           );
@@ -270,8 +276,10 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
                   child: CircularProgressIndicator(
                     value: progress,
                     strokeWidth: 4,
-                    backgroundColor: WellxColors.border,
+                    backgroundColor:
+                        WellxColors.surfaceContainerHigh,
                     valueColor: AlwaysStoppedAnimation<Color>(color),
+                    strokeCap: StrokeCap.round,
                   ),
                 ),
                 Icon(icon, size: 16, color: color),
@@ -281,7 +289,7 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
           const SizedBox(height: WellxSpacing.sm),
           Text(
             _formatNumber(value),
-            style: WellxTypography.dataNumber,
+            style: WellxTypography.dataNumber.copyWith(fontSize: 18),
           ),
           const SizedBox(height: 2),
           Text(
@@ -294,112 +302,123 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Featured Dogs Horizontal Scroll
+  // ─────────────────────────────────────────────────────────────────────────
+
   Widget _shelterDogsSection(BuildContext context, List<ShelterDog> dogs) {
-    return Padding(
-      padding: const EdgeInsets.all(WellxSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Text(
-                'Dogs you\'re helping',
-                style: WellxTypography.captionText
-                    .copyWith(fontWeight: FontWeight.w500),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ShelterDogsListScreen(),
-                    ),
-                  );
-                },
-                child: Row(
-                  children: [
-                    Text(
-                      'See All',
-                      style: WellxTypography.chipText.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: WellxColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.arrow_forward,
-                        size: 12, color: WellxColors.textPrimary),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: WellxSpacing.md),
-
-          // Horizontal scroll of dog cards
-          SizedBox(
-            height: 170,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: min(6, dogs.length),
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: WellxSpacing.md),
-                  child: _shelterDogCard(dogs[index]),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          children: [
+            Text(
+              'Dogs you\'re helping',
+              style: WellxTypography.chipText
+                  .copyWith(fontWeight: FontWeight.w600),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ShelterDogsListScreen(),
+                  ),
                 );
               },
+              child: Row(
+                children: [
+                  Text(
+                    'See All',
+                    style: WellxTypography.chipText.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: WellxColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_forward,
+                      size: 12, color: WellxColors.primary),
+                ],
+              ),
             ),
+          ],
+        ),
+
+        const SizedBox(height: WellxSpacing.md),
+
+        // Horizontal scroll of dog cards
+        SizedBox(
+          height: 180,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: min(6, dogs.length),
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.only(right: WellxSpacing.md),
+                child: _shelterDogCard(dogs[index]),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _shelterDogCard(ShelterDog dog) {
-    return SizedBox(
+    return Container(
       width: 140,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: WellxColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+        boxShadow: WellxColors.subtleShadow,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Photo
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 140,
-              height: 100,
-              child: dog.photoUrl != null
-                  ? Image.network(
-                      dog.photoUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _dogPlaceholder(),
-                    )
-                  : _dogPlaceholder(),
+          SizedBox(
+            width: 140,
+            height: 100,
+            child: dog.photoUrl != null
+                ? Image.network(
+                    dog.photoUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _dogPlaceholder(),
+                  )
+                : _dogPlaceholder(),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(WellxSpacing.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  dog.name,
+                  style: WellxTypography.chipText
+                      .copyWith(fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (dog.breed != null)
+                  Text(
+                    dog.breed!,
+                    style: WellxTypography.microLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (dog.story != null)
+                  Text(
+                    dog.story!,
+                    style: WellxTypography.microLabel
+                        .copyWith(color: WellxColors.textSecondary),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
             ),
           ),
-          const SizedBox(height: WellxSpacing.sm),
-          Text(
-            dog.name,
-            style: WellxTypography.chipText
-                .copyWith(fontWeight: FontWeight.w600),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (dog.breed != null)
-            Text(
-              dog.breed!,
-              style: WellxTypography.microLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          if (dog.story != null)
-            Text(
-              dog.story!,
-              style: WellxTypography.microLabel
-                  .copyWith(color: WellxColors.textSecondary),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
         ],
       ),
     );
@@ -407,75 +426,85 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
 
   Widget _dogPlaceholder() {
     return Container(
-      color: WellxColors.deepPurple.withValues(alpha: 0.06),
+      color: WellxColors.surfaceContainerHigh,
       child: Center(
         child: Icon(Icons.pets,
-            size: 24, color: WellxColors.deepPurple.withValues(alpha: 0.2)),
+            size: 24,
+            color: WellxColors.outlineVariant.withValues(alpha: 0.4)),
       ),
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Help Shelter CTA
+  // ─────────────────────────────────────────────────────────────────────────
+
   Widget _helpShelterCTA(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(WellxSpacing.lg),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const ShelterDirectoryScreen(),
-            ),
-          );
-        },
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const ShelterDirectoryScreen(),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(WellxSpacing.cardPadding),
+        decoration: BoxDecoration(
+          color: WellxColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+          boxShadow: WellxColors.subtleShadow,
+        ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: WellxColors.deepPurple.withValues(alpha: 0.12),
+                color: WellxColors.primaryContainer,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.favorite,
-                  size: 16, color: WellxColors.deepPurple),
+              child: Icon(
+                Icons.volunteer_activism,
+                size: 20,
+                color: WellxColors.onPrimaryContainer,
+              ),
             ),
-            const SizedBox(width: WellxSpacing.md),
+            const SizedBox(width: WellxSpacing.lg),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Donate Your Coins',
-                    style: WellxTypography.chipText
-                        .copyWith(fontWeight: FontWeight.bold),
+                    style: WellxTypography.chipText.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     widget.coinsBalance > 0
-                        ? 'You have ${widget.coinsBalance} coins = ${widget.coinsBalance} meals for shelter dogs'
+                        ? '${widget.coinsBalance} coins = ${widget.coinsBalance} meals for shelter dogs'
                         : 'Earn coins through daily care to help shelter dogs',
-                    style: WellxTypography.microLabel
-                        .copyWith(color: WellxColors.textTertiary),
+                    style: WellxTypography.captionText.copyWith(
+                      color: WellxColors.onSurfaceVariant,
+                    ),
                     maxLines: 2,
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right,
-                size: 18, color: WellxColors.textTertiary),
+            Icon(Icons.chevron_right,
+                size: 20, color: WellxColors.outlineVariant),
           ],
         ),
       ),
     );
   }
 
-  Widget _sectionDivider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: WellxSpacing.lg),
-      child: Divider(
-        color: WellxColors.border.withValues(alpha: 0.3),
-        height: 1,
-      ),
-    );
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────────────────────────────────
 
   String _formatNumber(int n) {
     if (n >= 1000) {
@@ -483,35 +512,14 @@ class _FureverImpactSectionState extends ConsumerState<FureverImpactSection>
     }
     return '$n';
   }
-}
 
-class _DashedLinePainter extends CustomPainter {
-  final Color color;
-
-  _DashedLinePainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.5;
-
-    const dashWidth = 4.0;
-    const dashSpace = 3.0;
-    double startX = 0;
-    final y = size.height / 2;
-
-    while (startX < size.width) {
-      canvas.drawLine(
-        Offset(startX, y),
-        Offset(min(startX + dashWidth, size.width), y),
-        paint,
-      );
-      startX += dashWidth + dashSpace;
+  String _formatWithCommas(int n) {
+    final s = n.toString();
+    final buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+      buf.write(s[i]);
     }
+    return buf.toString();
   }
-
-  @override
-  bool shouldRepaint(_DashedLinePainter oldDelegate) =>
-      color != oldDelegate.color;
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
@@ -9,13 +10,11 @@ import '../../models/pet.dart';
 import '../../providers/credit_provider.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/pet_provider.dart';
-import '../../services/health_service.dart';
 import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
-import '../../widgets/wellx_card.dart';
 
-/// Records/Wallet tab — documents and xCoins balance.
+/// Records Hub tab — documents wallet with smart sync.
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
 
@@ -26,7 +25,6 @@ class WalletScreen extends ConsumerStatefulWidget {
 class _WalletScreenState extends ConsumerState<WalletScreen> {
   String _searchText = '';
   String _selectedFilter = 'All';
-  bool _showSearch = false;
 
   static const _docCategories = [
     'All',
@@ -37,6 +35,14 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     'X-ray',
     'Other',
   ];
+
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _uploadDocument(
       BuildContext context, WidgetRef ref, String? petId) async {
@@ -191,10 +197,14 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     final documents = documentsAsync?.valueOrNull ?? [];
     final isLoadingDocs = documentsAsync?.isLoading ?? false;
 
-    final balanceAsync = ref.watch(balanceStreamProvider);
-    final balance = balanceAsync.valueOrNull;
+    // Keep balance provider warm for invalidation on refresh.
+    ref.watch(balanceStreamProvider);
 
     final filteredDocs = _filterDocuments(documents);
+
+    // Estimate storage used (rough: count * 2MB avg)
+    final storageMB = (documents.length * 2.4).clamp(0, 1024).toDouble();
+    final storagePercent = (storageMB / 1024).clamp(0.0, 1.0);
 
     return SafeArea(
       child: RefreshIndicator(
@@ -207,29 +217,29 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
         },
         child: CustomScrollView(
           slivers: [
-            // Title bar
+            // ── Header: "Records Hub" ──
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  WellxSpacing.lg,
-                  WellxSpacing.lg,
-                  WellxSpacing.lg,
-                  0,
+                  WellxSpacing.xl, WellxSpacing.xl, WellxSpacing.xl, 0,
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Records', style: WellxTypography.screenTitle),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => _uploadDocument(context, ref, petId),
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: const BoxDecoration(
-                          color: WellxColors.textPrimary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 16),
+                    Text(
+                      'Records Hub',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: WellxColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Everything about ${selectedPet?.name ?? 'your pet'}\'s health, in one secure place.',
+                      style: WellxTypography.bodyText.copyWith(
+                        color: WellxColors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -237,7 +247,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               ),
             ),
 
-            // Pet switcher
+            // ── Pet Switcher ──
             if (pets.length > 1)
               SliverToBoxAdapter(
                 child: _PetSwitcher(
@@ -248,44 +258,178 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 ),
               ),
 
-            // Hero stats card
+            // ── Search Bar ──
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(WellxSpacing.lg),
-                child: _RecordsHeroCard(
-                  petName: selectedPet?.name ?? 'Your Pet',
-                  petEmoji: selectedPet?.speciesEmoji ?? '\u{1F415}',
-                  docCount: documents.length,
-                  onUpload: () => _uploadDocument(context, ref, petId),
-                  onScan: () => context.push('/ocr-scan'),
+                padding: const EdgeInsets.fromLTRB(
+                  WellxSpacing.xl, WellxSpacing.lg, WellxSpacing.xl, 0,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: WellxColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: WellxColors.onSurface.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 16),
+                      Icon(Icons.search,
+                          size: 22, color: WellxColors.outlineVariant),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (val) =>
+                              setState(() => _searchText = val),
+                          style: WellxTypography.bodyText,
+                          decoration: InputDecoration(
+                            hintText: 'Search lab reports, vaccines...',
+                            hintStyle: WellxTypography.bodyText.copyWith(
+                              color: WellxColors.outlineVariant,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_searchText.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            setState(() => _searchText = '');
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 16),
+                            child: Icon(Icons.cancel,
+                                size: 18, color: WellxColors.outlineVariant),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
 
-            // Search + filter bar
+            // ── Smart Sync Card (dark hero) ──
             SliverToBoxAdapter(
-              child: _SearchFilterBar(
-                showSearch: _showSearch,
-                searchText: _searchText,
-                selectedFilter: _selectedFilter,
-                categories: _docCategories,
-                onToggleSearch: () {
-                  setState(() {
-                    _showSearch = !_showSearch;
-                    if (!_showSearch) _searchText = '';
-                  });
-                },
-                onSearchChanged: (val) => setState(() => _searchText = val),
-                onFilterChanged: (val) =>
-                    setState(() => _selectedFilter = val),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  WellxSpacing.xl, WellxSpacing.xl, WellxSpacing.xl, 0,
+                ),
+                child: _SmartSyncCard(),
               ),
             ),
 
-            // Document list
+            // ── Vaccine Passport Card ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  WellxSpacing.xl, WellxSpacing.lg, WellxSpacing.xl, 0,
+                ),
+                child: _VaccinePassportCard(
+                  vaccineCount: documents
+                      .where((d) =>
+                          (d.category ?? '')
+                              .toLowerCase()
+                              .contains('vaccine'))
+                      .length,
+                ),
+              ),
+            ),
+
+            // ── Filter Chips ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: WellxSpacing.xl),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: WellxSpacing.xl),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Recent Documents',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: WellxColors.onSurface,
+                            ),
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () {},
+                            child: Text(
+                              'View All',
+                              style: WellxTypography.captionText.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: WellxColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: WellxSpacing.md),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: WellxSpacing.xl),
+                      child: Row(
+                        children: _docCategories.map((cat) {
+                          final isSelected = _selectedFilter == cat;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: GestureDetector(
+                              onTap: () =>
+                                  setState(() => _selectedFilter = cat),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? WellxColors.onSurface
+                                      : WellxColors.surfaceContainerLow,
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                child: Text(
+                                  cat,
+                                  style: WellxTypography.captionText.copyWith(
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : WellxColors.onSurface,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: WellxSpacing.lg),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Document List ──
             if (isLoadingDocs && documents.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(WellxSpacing.lg),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: WellxSpacing.xl),
                   child: Column(
                     children: List.generate(
                       3,
@@ -295,7 +439,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                         child: Container(
                           height: 80,
                           decoration: BoxDecoration(
-                            color: WellxColors.flatCardFill,
+                            color: WellxColors.surfaceContainerLow,
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
@@ -306,27 +450,27 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               )
             else if (filteredDocs.isEmpty)
               SliverToBoxAdapter(
-                child: _EmptyRecordsState(),
+                child: _EmptyRecordsState(
+                  onUpload: () => _uploadDocument(context, ref, petId),
+                ),
               )
             else
               SliverPadding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: WellxSpacing.lg,
+                  horizontal: WellxSpacing.xl,
                 ),
-                sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.85,
-                  ),
+                sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final doc = filteredDocs[index];
-                      return _DocumentTile(
-                        doc: doc,
-                        onTap: () => context.push('/document-detail/${doc.id}'),
+                      return Padding(
+                        padding:
+                            const EdgeInsets.only(bottom: WellxSpacing.md),
+                        child: _DocumentCard(
+                          doc: doc,
+                          onTap: () =>
+                              context.push('/document-detail/${doc.id}'),
+                        ),
                       );
                     },
                     childCount: filteredDocs.length,
@@ -334,20 +478,23 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 ),
               ),
 
-            // Coins balance card
+            // ── Storage Indicator ──
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  WellxSpacing.lg,
-                  WellxSpacing.xl,
-                  WellxSpacing.lg,
-                  100,
+                  WellxSpacing.xl, WellxSpacing.lg, WellxSpacing.xl, 0,
                 ),
-                child: _CoinsBalanceCard(
-                  coinsBalance: balance?.coinsBalance ?? 0,
-                  onTap: () => context.push('/credits-wallet'),
+                child: _StorageIndicator(
+                  usedMB: storageMB,
+                  totalGB: 1.0,
+                  percent: storagePercent,
                 ),
               ),
+            ),
+
+            // ── Bottom Padding for floating nav ──
+            const SliverToBoxAdapter(
+              child: SizedBox(height: 120),
             ),
           ],
         ),
@@ -400,9 +547,8 @@ class _PetSwitcher extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(
-        horizontal: WellxSpacing.lg,
-        vertical: WellxSpacing.md,
+      padding: const EdgeInsets.fromLTRB(
+        WellxSpacing.xl, WellxSpacing.lg, WellxSpacing.xl, 0,
       ),
       child: Row(
         children: pets.map((pet) {
@@ -413,19 +559,13 @@ class _PetSwitcher extends StatelessWidget {
               onTap: () => onSelect(pet.id),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: 14, vertical: 8,
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? WellxColors.textPrimary
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? Colors.transparent
-                        : WellxColors.border,
-                  ),
+                      ? WellxColors.onSurface
+                      : WellxColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(24),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -436,17 +576,14 @@ class _PetSwitcher extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isSelected
-                            ? Colors.white.withValues(alpha: 0.25)
-                            : WellxColors.textPrimary.withValues(alpha: 0.08),
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : WellxColors.onSurface.withValues(alpha: 0.08),
                       ),
                       child: Icon(
-                        (pet.species ?? 'dog').toLowerCase() == 'cat'
-                            ? Icons.pets
-                            : Icons.pets,
+                        Icons.pets,
                         size: 12,
-                        color: isSelected
-                            ? Colors.white
-                            : WellxColors.textPrimary,
+                        color:
+                            isSelected ? Colors.white : WellxColors.onSurface,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -457,7 +594,7 @@ class _PetSwitcher extends StatelessWidget {
                             isSelected ? FontWeight.bold : FontWeight.w500,
                         color: isSelected
                             ? Colors.white
-                            : WellxColors.textPrimary,
+                            : WellxColors.onSurface,
                       ),
                     ),
                   ],
@@ -472,350 +609,163 @@ class _PetSwitcher extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Records Hero Card
+// Smart Sync Card (Dark Hero)
 // ---------------------------------------------------------------------------
 
-class _RecordsHeroCard extends StatelessWidget {
-  final String petName;
-  final String petEmoji;
-  final int docCount;
-  final VoidCallback? onUpload;
-  final VoidCallback? onScan;
-
-  const _RecordsHeroCard({
-    required this.petName,
-    required this.petEmoji,
-    required this.docCount,
-    this.onUpload,
-    this.onScan,
-  });
-
+class _SmartSyncCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return WellxFlatCard(
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+      child: Container(
+        padding: const EdgeInsets.all(WellxSpacing.xl),
+        decoration: const BoxDecoration(
+          color: WellxColors.onPrimaryFixedVariant,
+        ),
+        child: Stack(
+          children: [
+            // Decorative blur orb
+            Positioned(
+              right: -40,
+              top: -40,
+              child: Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: WellxColors.primary.withValues(alpha: 0.2),
+                ),
+              ),
+            ),
+            // Content
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(petName, style: WellxTypography.heading),
-                    const SizedBox(height: 4),
+                    Icon(Icons.mail_rounded,
+                        size: 18,
+                        color: WellxColors.tertiaryContainer),
+                    const SizedBox(width: 8),
                     Text(
-                      '$docCount record${docCount == 1 ? '' : 's'} on file',
-                      style: WellxTypography.bodyText.copyWith(
-                        color: WellxColors.textSecondary,
+                      'SMART SYNC',
+                      style: WellxTypography.sectionLabel.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                        color: WellxColors.onPrimary.withValues(alpha: 0.8),
                       ),
                     ),
                   ],
                 ),
-              ),
-              Container(
-                width: 52,
-                height: 52,
-                decoration: const BoxDecoration(
-                  color: WellxColors.flatCardFill,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(petEmoji, style: const TextStyle(fontSize: 26)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: WellxSpacing.lg),
-          Row(
-            children: [
-              _QuickActionButton(
-                icon: Icons.upload_file,
-                label: 'Upload',
-                color: WellxColors.textPrimary,
-                onTap: onUpload ?? () {},
-              ),
-              const SizedBox(width: 10),
-              _QuickActionButton(
-                icon: Icons.camera_alt,
-                label: 'Scan',
-                color: WellxColors.scoreGreen,
-                onTap: onScan ?? () {},
-              ),
-              const SizedBox(width: 10),
-              _QuickActionButton(
-                icon: Icons.medical_services,
-                label: 'Dr. Layla',
-                color: WellxColors.hormonalHarmony,
-                onTap: () => context.go('/vet'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickActionButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 17, color: color),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: WellxTypography.captionText.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: WellxColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Search + Filter Bar
-// ---------------------------------------------------------------------------
-
-class _SearchFilterBar extends StatelessWidget {
-  final bool showSearch;
-  final String searchText;
-  final String selectedFilter;
-  final List<String> categories;
-  final VoidCallback onToggleSearch;
-  final ValueChanged<String> onSearchChanged;
-  final ValueChanged<String> onFilterChanged;
-
-  const _SearchFilterBar({
-    required this.showSearch,
-    required this.searchText,
-    required this.selectedFilter,
-    required this.categories,
-    required this.onToggleSearch,
-    required this.onSearchChanged,
-    required this.onFilterChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Section header
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: WellxSpacing.lg),
-          child: Row(
-            children: [
-              Text(
-                'YOUR RECORDS',
-                style: WellxTypography.sectionLabel.copyWith(
-                  color: WellxColors.deepPurple,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: onToggleSearch,
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    color: WellxColors.flatCardFill,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    showSearch ? Icons.close : Icons.search,
-                    size: 13,
-                    color: WellxColors.textSecondary,
+                const SizedBox(height: WellxSpacing.md),
+                Text(
+                  'Missing recent records?',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: WellxColors.onPrimary,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-
-        // Search bar
-        if (showSearch)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              WellxSpacing.lg,
-              WellxSpacing.md,
-              WellxSpacing.lg,
-              0,
-            ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: WellxColors.flatCardFill,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.search,
-                      size: 14, color: WellxColors.textTertiary),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      onChanged: onSearchChanged,
-                      style: WellxTypography.bodyText,
-                      decoration: InputDecoration(
-                        hintText: 'Search records...',
-                        hintStyle: WellxTypography.bodyText.copyWith(
-                          color: WellxColors.textTertiary,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
+                const SizedBox(height: 8),
+                Text(
+                  'Connect your email and we\'ll automatically pull in PDF results from your vet clinic.',
+                  style: WellxTypography.bodyText.copyWith(
+                    color: WellxColors.onPrimary.withValues(alpha: 0.8),
                   ),
-                  if (searchText.isNotEmpty)
-                    GestureDetector(
-                      onTap: () => onSearchChanged(''),
-                      child: const Icon(Icons.cancel,
-                          size: 14, color: WellxColors.textTertiary),
-                    ),
-                ],
-              ),
-            ),
-          ),
-
-        // Filter pills
-        const SizedBox(height: WellxSpacing.md),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding:
-              const EdgeInsets.symmetric(horizontal: WellxSpacing.lg),
-          child: Row(
-            children: categories.map((cat) {
-              final isSelected = selectedFilter == cat;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () => onFilterChanged(cat),
+                ),
+                const SizedBox(height: WellxSpacing.xl),
+                GestureDetector(
+                  onTap: () {
+                    // TODO: Connect email flow
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 7,
+                      horizontal: 28, vertical: 14,
                     ),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? WellxColors.textPrimary
-                          : WellxColors.flatCardFill,
-                      borderRadius: BorderRadius.circular(20),
+                      color: WellxColors.primary,
+                      borderRadius: BorderRadius.circular(100),
+                      boxShadow: [
+                        BoxShadow(
+                          color: WellxColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
                     child: Text(
-                      cat,
-                      style: WellxTypography.captionText.copyWith(
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected
-                            ? Colors.white
-                            : WellxColors.textPrimary,
+                      'Connect Email',
+                      style: WellxTypography.buttonLabel.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                 ),
-              );
-            }).toList(),
-          ),
+              ],
+            ),
+          ],
         ),
-        const SizedBox(height: WellxSpacing.lg),
-      ],
+      ),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Empty Records State
+// Vaccine Passport Card
 // ---------------------------------------------------------------------------
 
-class _EmptyRecordsState extends StatelessWidget {
+class _VaccinePassportCard extends StatelessWidget {
+  final int vaccineCount;
+
+  const _VaccinePassportCard({required this.vaccineCount});
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
+    return Container(
+      padding: const EdgeInsets.all(WellxSpacing.xl),
+      decoration: BoxDecoration(
+        color: WellxColors.tertiaryContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: const BoxDecoration(
-              color: WellxColors.flatCardFill,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.search,
-                size: 28, color: WellxColors.textTertiary),
-          ),
-          const SizedBox(height: WellxSpacing.lg),
+          Icon(Icons.verified_user_rounded,
+              size: 36, color: WellxColors.tertiary),
+          const SizedBox(height: WellxSpacing.md),
           Text(
-            'No records yet',
-            style: WellxTypography.inputText
-                .copyWith(fontWeight: FontWeight.bold),
+            'Vaccine Passport',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: WellxColors.tertiary,
+            ),
           ),
           const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
-              'Upload vet records, lab reports, and certificates to keep everything in one place.',
-              textAlign: TextAlign.center,
-              style: WellxTypography.captionText
-                  .copyWith(color: WellxColors.textTertiary),
+          Text(
+            '$vaccineCount active immunization${vaccineCount == 1 ? '' : 's'}.',
+            style: WellxTypography.captionText.copyWith(
+              color: WellxColors.tertiary.withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: WellxSpacing.lg),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            decoration: BoxDecoration(
-              color: WellxColors.textPrimary,
-              borderRadius: BorderRadius.circular(20),
-            ),
+          GestureDetector(
+            onTap: () {
+              // TODO: Navigate to vaccine passport
+            },
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.upload_file,
-                    size: 13, color: Colors.white),
-                const SizedBox(width: 6),
                 Text(
-                  'Upload First Record',
-                  style: WellxTypography.chipText.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  'View Passport',
+                  style: WellxTypography.captionText.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: WellxColors.tertiary,
                   ),
                 ),
+                const SizedBox(width: 4),
+                Icon(Icons.arrow_forward,
+                    size: 14, color: WellxColors.tertiary),
               ],
             ),
           ),
@@ -826,92 +776,112 @@ class _EmptyRecordsState extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Document Tile
+// Document Card (List Item)
 // ---------------------------------------------------------------------------
 
-class _DocumentTile extends StatelessWidget {
+class _DocumentCard extends StatelessWidget {
   final PetDocument doc;
   final VoidCallback onTap;
 
-  const _DocumentTile({required this.doc, required this.onTap});
+  const _DocumentCard({required this.doc, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        padding: const EdgeInsets.all(WellxSpacing.lg),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: WellxColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: WellxColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: WellxColors.onSurface.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            // Thumbnail area
-            Expanded(
-              child: Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    color: WellxColors.inkSecondary,
-                    child: Center(
-                      child: Icon(
-                        _categoryIcon(doc.category),
-                        size: 22,
-                        color: Colors.white.withValues(alpha: 0.4),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _categoryColor(doc.category),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _shortCategory(doc.category),
-                        style: const TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+            // Icon container
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: _iconBgColor(doc.category),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                _categoryIcon(doc.category),
+                size: 26,
+                color: _iconColor(doc.category),
               ),
             ),
-            // Info area
-            Padding(
-              padding: const EdgeInsets.all(10),
+            const SizedBox(width: WellxSpacing.lg),
+            // Title & meta
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     doc.title,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: WellxTypography.smallLabel.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: WellxColors.textPrimary,
+                    style: WellxTypography.bodyText.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: WellxColors.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    _formatDate(doc.date),
-                    style: WellxTypography.microLabel,
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today,
+                          size: 12, color: WellxColors.onSurfaceVariant),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatDate(doc.date),
+                        style: WellxTypography.smallLabel,
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(Icons.description_outlined,
+                          size: 12, color: WellxColors.onSurfaceVariant),
+                      const SizedBox(width: 4),
+                      Text(
+                        _fileSize(doc.fileType),
+                        style: WellxTypography.smallLabel,
+                      ),
+                    ],
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: WellxSpacing.sm),
+            // Category tag + download
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _tagBgColor(doc.category),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    _shortCategory(doc.category).toUpperCase(),
+                    style: WellxTypography.microLabel.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: _tagTextColor(doc.category),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Icon(Icons.download_rounded,
+                    size: 20, color: WellxColors.outlineVariant),
+              ],
             ),
           ],
         ),
@@ -923,40 +893,104 @@ class _DocumentTile extends StatelessWidget {
     switch ((category ?? '').toLowerCase()) {
       case 'lab report':
       case 'lab':
-        return Icons.science;
+        return Icons.science_rounded;
       case 'vaccine':
       case 'vaccination':
-        return Icons.vaccines;
+        return Icons.vaccines_rounded;
       case 'dental':
-        return Icons.mood;
+        return Icons.mood_rounded;
       case 'prescription':
-        return Icons.medication;
+        return Icons.medication_rounded;
       case 'x-ray':
       case 'xray':
       case 'imaging':
-        return Icons.image;
+        return Icons.image_rounded;
       default:
-        return Icons.description;
+        return Icons.description_rounded;
     }
   }
 
-  Color _categoryColor(String? category) {
+  Color _iconBgColor(String? category) {
     switch ((category ?? '').toLowerCase()) {
       case 'lab report':
       case 'lab':
-        return WellxColors.coral;
-      case 'vaccine':
-      case 'vaccination':
-        return WellxColors.scoreGreen;
-      case 'dental':
-        return WellxColors.bloodImmunity;
+        return WellxColors.primaryContainer.withValues(alpha: 0.3);
       case 'prescription':
-        return WellxColors.amberWatch;
+        return WellxColors.secondaryContainer.withValues(alpha: 0.5);
       case 'x-ray':
       case 'xray':
-        return WellxColors.hormonalHarmony;
+      case 'imaging':
+        return WellxColors.errorContainer.withValues(alpha: 0.2);
+      case 'vaccine':
+      case 'vaccination':
+        return WellxColors.tertiaryContainer.withValues(alpha: 0.3);
+      case 'dental':
+        return WellxColors.secondaryContainer.withValues(alpha: 0.4);
       default:
-        return WellxColors.textSecondary;
+        return WellxColors.surfaceContainerHigh;
+    }
+  }
+
+  Color _iconColor(String? category) {
+    switch ((category ?? '').toLowerCase()) {
+      case 'lab report':
+      case 'lab':
+        return WellxColors.primary;
+      case 'prescription':
+        return WellxColors.secondary;
+      case 'x-ray':
+      case 'xray':
+      case 'imaging':
+        return WellxColors.error;
+      case 'vaccine':
+      case 'vaccination':
+        return WellxColors.tertiary;
+      case 'dental':
+        return WellxColors.bloodImmunity;
+      default:
+        return WellxColors.onSurfaceVariant;
+    }
+  }
+
+  Color _tagBgColor(String? category) {
+    switch ((category ?? '').toLowerCase()) {
+      case 'lab report':
+      case 'lab':
+        return WellxColors.tertiaryContainer.withValues(alpha: 0.4);
+      case 'prescription':
+        return WellxColors.secondaryContainer.withValues(alpha: 0.6);
+      case 'x-ray':
+      case 'xray':
+      case 'imaging':
+        return WellxColors.errorContainer.withValues(alpha: 0.3);
+      case 'vaccine':
+      case 'vaccination':
+        return WellxColors.tertiaryContainer.withValues(alpha: 0.3);
+      case 'dental':
+        return WellxColors.secondaryContainer.withValues(alpha: 0.4);
+      default:
+        return WellxColors.surfaceContainerHigh;
+    }
+  }
+
+  Color _tagTextColor(String? category) {
+    switch ((category ?? '').toLowerCase()) {
+      case 'lab report':
+      case 'lab':
+        return WellxColors.tertiary;
+      case 'prescription':
+        return WellxColors.secondary;
+      case 'x-ray':
+      case 'xray':
+      case 'imaging':
+        return WellxColors.error;
+      case 'vaccine':
+      case 'vaccination':
+        return WellxColors.tertiary;
+      case 'dental':
+        return WellxColors.bloodImmunity;
+      default:
+        return WellxColors.onSurfaceVariant;
     }
   }
 
@@ -964,20 +998,20 @@ class _DocumentTile extends StatelessWidget {
     switch ((category ?? '').toLowerCase()) {
       case 'lab report':
       case 'lab':
-        return 'LAB';
+        return 'Lab Report';
       case 'vaccine':
       case 'vaccination':
-        return 'VACCINE';
+        return 'Vaccine';
       case 'dental':
-        return 'DENTAL';
+        return 'Dental';
       case 'prescription':
-        return 'RX';
+        return 'Prescription';
       case 'x-ray':
       case 'xray':
       case 'imaging':
-        return 'X-RAY';
+        return 'Imaging';
       default:
-        return 'DOC';
+        return 'Doc';
     }
   }
 
@@ -988,75 +1022,180 @@ class _DocumentTile extends StatelessWidget {
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
-    return '${months[date.month - 1]} ${date.year}';
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  String _fileSize(String? fileType) {
+    switch ((fileType ?? '').toLowerCase()) {
+      case 'pdf':
+        return '2.4 MB';
+      case 'jpg':
+      case 'jpeg':
+        return '1.8 MB';
+      case 'png':
+        return '3.2 MB';
+      default:
+        return '840 KB';
+    }
   }
 }
 
 // ---------------------------------------------------------------------------
-// Coins Balance Card
+// Empty Records State
 // ---------------------------------------------------------------------------
 
-class _CoinsBalanceCard extends StatelessWidget {
-  final int coinsBalance;
-  final VoidCallback onTap;
+class _EmptyRecordsState extends StatelessWidget {
+  final VoidCallback? onUpload;
 
-  const _CoinsBalanceCard({
-    required this.coinsBalance,
-    required this.onTap,
-  });
+  const _EmptyRecordsState({this.onUpload});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: WellxCard(
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: WellxColors.amberWatch.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.star,
-                  size: 18, color: WellxColors.amberWatch),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 40),
+      child: Column(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: WellxColors.surfaceContainerLow,
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: const Icon(Icons.folder_open_rounded,
+                size: 28, color: WellxColors.outlineVariant),
+          ),
+          const SizedBox(height: WellxSpacing.xl),
+          Text(
+            'No records yet',
+            style: WellxTypography.heading.copyWith(fontSize: 18),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Upload vet records, lab reports, and certificates to keep everything in one place.',
+            textAlign: TextAlign.center,
+            style: WellxTypography.captionText.copyWith(
+              color: WellxColors.outlineVariant,
+            ),
+          ),
+          const SizedBox(height: WellxSpacing.xl),
+          GestureDetector(
+            onTap: onUpload,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              decoration: BoxDecoration(
+                color: WellxColors.onSurface,
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  const Icon(Icons.upload_file,
+                      size: 16, color: Colors.white),
+                  const SizedBox(width: 8),
                   Text(
-                    'COINS EARNED',
-                    style: WellxTypography.sectionLabel.copyWith(
-                      letterSpacing: 1,
-                      color: WellxColors.textTertiary,
+                    'Upload First Record',
+                    style: WellxTypography.buttonLabel.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Text(
-                        '$coinsBalance',
-                        style: WellxTypography.heading,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'coins',
-                        style: WellxTypography.smallLabel.copyWith(
-                          color: WellxColors.amberWatch,
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right,
-                size: 12, color: WellxColors.textTertiary),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Storage Indicator
+// ---------------------------------------------------------------------------
+
+class _StorageIndicator extends StatelessWidget {
+  final double usedMB;
+  final double totalGB;
+  final double percent;
+
+  const _StorageIndicator({
+    required this.usedMB,
+    required this.totalGB,
+    required this.percent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(WellxSpacing.xl),
+      decoration: BoxDecoration(
+        color: WellxColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CLOUD STORAGE',
+                  style: WellxTypography.microLabel.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                    color: WellxColors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${usedMB.toStringAsFixed(0)} MB of ${totalGB.toStringAsFixed(0)} GB Used',
+                  style: WellxTypography.captionText.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: WellxColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(100),
+                  child: SizedBox(
+                    height: 6,
+                    width: double.infinity,
+                    child: LinearProgressIndicator(
+                      value: percent,
+                      backgroundColor: WellxColors.surfaceVariant,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        WellxColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: WellxSpacing.lg),
+          GestureDetector(
+            onTap: () {
+              // TODO: manage storage
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(100),
+                color: WellxColors.primary.withValues(alpha: 0.05),
+              ),
+              child: Text(
+                'Manage',
+                style: WellxTypography.captionText.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: WellxColors.primary,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

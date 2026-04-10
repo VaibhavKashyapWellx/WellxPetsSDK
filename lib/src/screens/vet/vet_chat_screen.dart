@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../providers/pet_provider.dart';
@@ -116,23 +117,46 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
 
     if (chatState.messages.isNotEmpty) _scrollToBottom();
 
+    final hasMessages = chatState.messages.isNotEmpty || chatState.isLoading;
+
     return Scaffold(
-      backgroundColor: WellxColors.background,
+      backgroundColor: WellxColors.surface,
       appBar: _buildAppBar(pet?.name),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _focusNode.unfocus(),
-              child: chatState.messages.isEmpty && !chatState.isLoading
-                  ? _buildEmptyState(pet?.name ?? 'your pet')
-                  : _buildMessageList(chatState),
-            ),
+          // Main content area
+          GestureDetector(
+            onTap: () => _focusNode.unfocus(),
+            child: hasMessages
+                ? _buildMessageList(chatState)
+                : _buildEmptyState(),
           ),
+
+          // Error banner
           if (chatState.errorMessage != null)
-            _buildErrorBanner(chatState.errorMessage!),
-          if (_pendingImage != null) _buildImagePreview(),
-          _buildInputBar(chatState.isLoading),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 200,
+              child: _buildErrorBanner(chatState.errorMessage!),
+            ),
+
+          // Pending image preview
+          if (_pendingImage != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 140,
+              child: _buildImagePreview(),
+            ),
+
+          // Floating input bar
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildFloatingInputBar(chatState.isLoading),
+          ),
         ],
       ),
     );
@@ -142,27 +166,32 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
 
   PreferredSizeWidget _buildAppBar(String? petName) {
     return AppBar(
-      backgroundColor: WellxColors.cardSurface,
+      backgroundColor: WellxColors.surface.withValues(alpha: 0.8),
       elevation: 0,
       centerTitle: false,
       title: Row(
         children: [
+          // AI gradient avatar
           Container(
             width: 38,
             height: 38,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: WellxColors.primaryGradient,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [WellxColors.primary, WellxColors.aiPurple],
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: WellxColors.deepPurple.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  color: WellxColors.primary.withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: const Icon(
-              Icons.medical_services_rounded,
+              Icons.smart_toy_rounded,
               color: Colors.white,
               size: 18,
             ),
@@ -184,7 +213,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                     height: 8,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: WellxColors.alertGreen,
+                      color: WellxColors.tertiary,
                     ),
                   ),
                 ],
@@ -193,7 +222,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                 Text(
                   'Reviewing $petName\'s records',
                   style: WellxTypography.captionText.copyWith(
-                    color: WellxColors.textTertiary,
+                    color: WellxColors.onSurfaceVariant,
                     fontSize: 11,
                   ),
                 ),
@@ -205,7 +234,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
         if (ref.read(vetChatProvider).messages.isNotEmpty)
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 20),
-            color: WellxColors.textTertiary,
+            color: WellxColors.outline,
             onPressed: _showClearDialog,
           ),
       ],
@@ -230,179 +259,245 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
               Navigator.pop(ctx);
             },
             child: Text('Clear',
-                style: TextStyle(color: WellxColors.alertRed)),
+                style: TextStyle(color: WellxColors.error)),
           ),
         ],
       ),
     );
   }
 
-  // ── Empty State ───────────────────────────────────────────────────────────
+  // ── Empty State (Dr. Layla Intro + Suggestion Tiles) ───────────────────
 
-  Widget _buildEmptyState(String petName) {
+  Widget _buildEmptyState() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(WellxSpacing.lg),
+      padding: const EdgeInsets.fromLTRB(
+        WellxSpacing.lg,
+        WellxSpacing.lg,
+        WellxSpacing.lg,
+        200,
+      ),
       child: Column(
         children: [
           const SizedBox(height: WellxSpacing.xl),
-          Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: WellxColors.primaryGradient,
-              boxShadow: [
-                BoxShadow(
-                  color: WellxColors.deepPurple.withValues(alpha: 0.3),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.medical_services_rounded,
-              color: Colors.white,
-              size: 38,
-            ),
-          ),
-          const SizedBox(height: WellxSpacing.lg),
-          Text('Dr. Layla', style: WellxTypography.heading),
-          const SizedBox(height: WellxSpacing.xs),
-          Text(
-            'Pet wellness companion for $petName',
-            style: WellxTypography.captionText.copyWith(
-              color: WellxColors.textTertiary,
-            ),
-          ),
-          const SizedBox(height: WellxSpacing.xs),
-          Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: WellxSpacing.lg, vertical: WellxSpacing.sm),
-            decoration: BoxDecoration(
-              color: WellxColors.amberWatch.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              'Not a replacement for a vet. A well-informed first opinion available 24/7.',
-              textAlign: TextAlign.center,
-              style: WellxTypography.captionText.copyWith(
-                color: WellxColors.amberWatch,
-                fontSize: 11,
-              ),
-            ),
-          ),
+          // Dr. Layla Intro
+          _buildDrLaylaIntro(),
           const SizedBox(height: WellxSpacing.xxl),
-          _buildChipSection('SYMPTOMS', [
-            "He's limping",
-            "She's not eating",
-            "Vomiting",
-            "Drinking more than usual",
-            "Lethargy",
-            "Itching a lot",
-          ]),
-          const SizedBox(height: WellxSpacing.lg),
-          _buildChipSection('QUESTIONS', [
-            'What should I feed my dog?',
-            'Is this symptom concerning?',
-            'Medication question',
-            'Review blood work results',
-            'Exercise advice',
-          ]),
-          const SizedBox(height: WellxSpacing.lg),
-          // Photo prompt
-          GestureDetector(
-            onTap: _pickImage,
-            child: Container(
-              padding: const EdgeInsets.all(WellxSpacing.lg),
+          // Bento Grid Suggestion Tiles
+          _buildSuggestionTiles(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrLaylaIntro() {
+    return Column(
+      children: [
+        // Avatar with gradient ring and green dot
+        Stack(
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                color: WellxColors.cardSurface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: WellxColors.border),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: WellxColors.deepPurple.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.add_photo_alternate_rounded,
-                        color: WellxColors.deepPurple, size: 20),
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [WellxColors.primary, WellxColors.aiPurple],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: WellxColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 32,
+                    offset: const Offset(0, 8),
                   ),
-                  const SizedBox(width: WellxSpacing.md),
+                ],
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: WellxColors.surfaceContainerHigh,
+                ),
+                child: const Icon(
+                  Icons.smart_toy_rounded,
+                  color: WellxColors.primary,
+                  size: 38,
+                ),
+              ),
+            ),
+            // Green dot indicator
+            Positioned(
+              bottom: 2,
+              right: 2,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: WellxColors.tertiary,
+                  border: Border.all(color: WellxColors.surfaceContainerLowest, width: 2),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  size: 12,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: WellxSpacing.lg),
+        // "Dr. Layla" heading
+        Text(
+          'Dr. Layla',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: WellxColors.onSurface,
+          ),
+        ),
+        const SizedBox(height: WellxSpacing.sm),
+        // Subtitle
+        SizedBox(
+          width: 280,
+          child: Text(
+            'Your AI Pet Wellness Partner. Ask me anything about your pet\'s health.',
+            textAlign: TextAlign.center,
+            style: WellxTypography.captionText.copyWith(
+              color: WellxColors.onSurfaceVariant,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSuggestionTiles() {
+    return Column(
+      children: [
+        // Full-width Symptom Check tile
+        _buildSuggestionTile(
+          icon: Icons.medical_services_rounded,
+          iconColor: WellxColors.error,
+          title: 'Symptom Check',
+          subtitle: "Describe what's happening with your pet.",
+          onTap: () => _sendChip("My pet has a symptom I'd like to check"),
+          isFullWidth: true,
+        ),
+        const SizedBox(height: WellxSpacing.md),
+        // Half-width row: Diet Advice + Medication
+        Row(
+          children: [
+            Expanded(
+              child: _buildSuggestionTile(
+                icon: Icons.restaurant_rounded,
+                iconColor: WellxColors.tertiary,
+                title: 'Diet Advice',
+                subtitle: 'Nutrition & treats.',
+                onTap: () => _sendChip('I need diet advice for my pet'),
+              ),
+            ),
+            const SizedBox(width: WellxSpacing.md),
+            Expanded(
+              child: _buildSuggestionTile(
+                icon: Icons.medication_rounded,
+                iconColor: WellxColors.primary,
+                title: 'Medication',
+                subtitle: 'Dosage & safety.',
+                onTap: () => _sendChip('I have a medication question'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSuggestionTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool isFullWidth = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(WellxSpacing.lg + 4),
+        decoration: BoxDecoration(
+          color: WellxColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: WellxColors.onSurface.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: isFullWidth
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Icon(icon, color: iconColor, size: 24),
+                        const SizedBox(height: WellxSpacing.md),
                         Text(
-                          'Share a Photo',
-                          style: WellxTypography.chipText.copyWith(
-                            fontWeight: FontWeight.w600,
+                          title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: WellxColors.onSurface,
                           ),
                         ),
+                        const SizedBox(height: WellxSpacing.xs),
                         Text(
-                          'Show Dr. Layla a rash, wound, or symptom',
+                          subtitle,
                           style: WellxTypography.captionText.copyWith(
-                            color: WellxColors.textTertiary,
-                            fontSize: 11,
+                            color: WellxColors.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right,
-                      size: 18, color: WellxColors.textTertiary),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: WellxColors.outlineVariant,
+                  ),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, color: iconColor, size: 24),
+                  const SizedBox(height: WellxSpacing.md),
+                  Text(
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: WellxColors.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: WellxSpacing.xs),
+                  Text(
+                    subtitle,
+                    style: WellxTypography.captionText.copyWith(
+                      color: WellxColors.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ),
-        ],
       ),
-    );
-  }
-
-  Widget _buildChipSection(String title, List<String> chips) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: WellxSpacing.sm),
-          child: Text(
-            title,
-            style: WellxTypography.sectionLabel.copyWith(
-              color: WellxColors.textTertiary,
-            ),
-          ),
-        ),
-        Wrap(
-          spacing: WellxSpacing.sm,
-          runSpacing: WellxSpacing.sm,
-          children: chips.map((chip) {
-            return GestureDetector(
-              onTap: () => _sendChip(chip),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: WellxColors.cardSurface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: WellxColors.border),
-                ),
-                child: Text(
-                  chip,
-                  style: WellxTypography.captionText.copyWith(
-                    color: WellxColors.textPrimary,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 
@@ -411,9 +506,11 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
   Widget _buildMessageList(VetChatState chatState) {
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(
-        horizontal: WellxSpacing.lg,
-        vertical: WellxSpacing.sm,
+      padding: const EdgeInsets.fromLTRB(
+        WellxSpacing.lg,
+        WellxSpacing.sm,
+        WellxSpacing.lg,
+        200, // padding for floating input bar + nav bar
       ),
       itemCount: chatState.messages.length + (chatState.isLoading ? 1 : 0),
       itemBuilder: (context, index) {
@@ -429,128 +526,187 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
     final isUser = message.role == 'user';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: WellxSpacing.md),
-      child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isUser) ...[
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: WellxColors.primaryGradient,
-              ),
-              child: const Icon(
-                Icons.medical_services_rounded,
-                color: Colors.white,
-                size: 14,
-              ),
-            ),
-            const SizedBox(width: WellxSpacing.sm),
-          ],
-          Flexible(
-            child: Column(
-              crossAxisAlignment:
-                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                // Image bubble (if message has an attached image path)
-                if (message.imagePath != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.file(
-                        File(message.imagePath!),
-                        width: 200,
-                        height: 140,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                if (message.content.isNotEmpty)
-                  Container(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.75,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isUser
-                          ? WellxColors.deepPurple
-                          : WellxColors.cardSurface,
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(18),
-                        topRight: const Radius.circular(18),
-                        bottomLeft: Radius.circular(isUser ? 18 : 4),
-                        bottomRight: Radius.circular(isUser ? 4 : 18),
-                      ),
-                      border: isUser
-                          ? null
-                          : Border.all(
-                              color: WellxColors.border, width: 0.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: isUser
-                        ? Text(
-                            message.content,
-                            style: WellxTypography.bodyText.copyWith(
-                              color: Colors.white,
-                            ),
-                          )
-                        : MarkdownBody(
-                            data: message.content,
-                            styleSheet: MarkdownStyleSheet(
-                              p: WellxTypography.bodyText.copyWith(
-                                color: WellxColors.textPrimary,
-                                height: 1.5,
-                              ),
-                              strong: WellxTypography.bodyText.copyWith(
-                                color: WellxColors.textPrimary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              listBullet: WellxTypography.bodyText.copyWith(
-                                color: WellxColors.textSecondary,
-                              ),
-                              h1: WellxTypography.heading.copyWith(fontSize: 18),
-                              h2: WellxTypography.heading.copyWith(fontSize: 16),
-                              h3: WellxTypography.heading.copyWith(fontSize: 14),
-                              code: TextStyle(
-                                fontFamily: 'monospace',
-                                fontSize: 13,
-                                color: WellxColors.deepPurple,
-                                backgroundColor: WellxColors.flatCardFill,
-                              ),
-                              blockquotePadding:
-                                  const EdgeInsets.only(left: 12),
-                              blockquoteDecoration: BoxDecoration(
-                                border: Border(
-                                  left: BorderSide(
-                                    color: WellxColors.deepPurple
-                                        .withValues(alpha: 0.3),
-                                    width: 3,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                  ),
-              ],
+      padding: const EdgeInsets.only(bottom: WellxSpacing.lg),
+      child: isUser ? _buildUserBubble(message) : _buildAiBubble(message),
+    );
+  }
+
+  Widget _buildAiBubble(ChatMessage message) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // AI avatar: small gradient circle with smart_toy icon
+        Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [WellxColors.primary, WellxColors.aiPurple],
             ),
           ),
-          if (isUser) const SizedBox(width: WellxSpacing.sm),
-        ],
-      ),
+          child: const Icon(
+            Icons.smart_toy_rounded,
+            color: Colors.white,
+            size: 14,
+          ),
+        ),
+        const SizedBox(width: WellxSpacing.sm),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image bubble (if message has an attached image path)
+              if (message.imagePath != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.file(
+                      File(message.imagePath!),
+                      width: 200,
+                      height: 140,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              if (message.content.isNotEmpty)
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.78,
+                  ),
+                  padding: const EdgeInsets.all(WellxSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: WellxColors.surfaceContainerHigh,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                      bottomLeft: Radius.circular(4),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: WellxColors.onSurface.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: MarkdownBody(
+                    data: message.content,
+                    styleSheet: MarkdownStyleSheet(
+                      p: WellxTypography.bodyText.copyWith(
+                        color: WellxColors.onSurface,
+                        height: 1.5,
+                      ),
+                      strong: WellxTypography.bodyText.copyWith(
+                        color: WellxColors.onSurface,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      listBullet: WellxTypography.bodyText.copyWith(
+                        color: WellxColors.onSurfaceVariant,
+                      ),
+                      h1: WellxTypography.heading.copyWith(fontSize: 18),
+                      h2: WellxTypography.heading.copyWith(fontSize: 16),
+                      h3: WellxTypography.heading.copyWith(fontSize: 14),
+                      code: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                        color: WellxColors.primary,
+                        backgroundColor: WellxColors.surfaceContainerLow,
+                      ),
+                      blockquotePadding: const EdgeInsets.only(left: 12),
+                      blockquoteDecoration: BoxDecoration(
+                        border: Border(
+                          left: BorderSide(
+                            color: WellxColors.primary.withValues(alpha: 0.3),
+                            width: 3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUserBubble(ChatMessage message) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Image bubble (if message has an attached image path)
+              if (message.imagePath != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.file(
+                      File(message.imagePath!),
+                      width: 200,
+                      height: 140,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              if (message.content.isNotEmpty)
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.78,
+                  ),
+                  padding: const EdgeInsets.all(WellxSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: WellxColors.primary,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(4),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: WellxColors.primary.withValues(alpha: 0.2),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    message.content,
+                    style: WellxTypography.bodyText.copyWith(
+                      color: WellxColors.onPrimary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: WellxSpacing.sm),
+        // User avatar: small primary circle with person icon
+        Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: WellxColors.primary,
+          ),
+          child: const Icon(
+            Icons.person_rounded,
+            color: Colors.white,
+            size: 14,
+          ),
+        ),
+      ],
     );
   }
 
@@ -563,31 +719,40 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              gradient: WellxColors.primaryGradient,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [WellxColors.primary, WellxColors.aiPurple],
+              ),
             ),
             child: const Icon(
-              Icons.medical_services_rounded,
+              Icons.smart_toy_rounded,
               color: Colors.white,
               size: 14,
             ),
           ),
           const SizedBox(width: WellxSpacing.sm),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: WellxColors.cardSurface,
+              color: WellxColors.surfaceContainerHigh,
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
-                bottomRight: Radius.circular(18),
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+                bottomRight: Radius.circular(20),
                 bottomLeft: Radius.circular(4),
               ),
-              border: Border.all(color: WellxColors.border, width: 0.5),
+              boxShadow: [
+                BoxShadow(
+                  color: WellxColors.onSurface.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: const _TypingDots(),
           ),
@@ -606,18 +771,18 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
       ),
       padding: const EdgeInsets.all(WellxSpacing.md),
       decoration: BoxDecoration(
-        color: WellxColors.alertRed.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
+        color: WellxColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(Icons.warning_rounded, size: 16, color: WellxColors.alertRed),
+          Icon(Icons.warning_rounded, size: 16, color: WellxColors.error),
           const SizedBox(width: WellxSpacing.sm),
           Expanded(
             child: Text(
               message,
               style: WellxTypography.captionText.copyWith(
-                color: WellxColors.textSecondary,
+                color: WellxColors.onSurfaceVariant,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -628,7 +793,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
             child: Text(
               'Retry',
               style: WellxTypography.captionText.copyWith(
-                color: WellxColors.deepPurple,
+                color: WellxColors.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -638,16 +803,24 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
     );
   }
 
-  // ── Pending image preview ─────────────────────────────────────────────────
+  // ── Pending image preview ───────────────────────────────────────────────
 
   Widget _buildImagePreview() {
     return Container(
       height: 80,
+      margin: const EdgeInsets.symmetric(horizontal: WellxSpacing.lg),
       padding: const EdgeInsets.symmetric(
           horizontal: WellxSpacing.md, vertical: WellxSpacing.sm),
       decoration: BoxDecoration(
-        color: WellxColors.cardSurface,
-        border: Border(top: BorderSide(color: WellxColors.border, width: 0.5)),
+        color: WellxColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: WellxColors.onSurface.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -672,7 +845,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                     height: 20,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: WellxColors.textPrimary,
+                      color: WellxColors.onSurface,
                     ),
                     child: const Icon(Icons.close,
                         size: 12, color: Colors.white),
@@ -685,7 +858,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
           Text(
             'Photo attached',
             style: WellxTypography.captionText.copyWith(
-              color: WellxColors.textSecondary,
+              color: WellxColors.onSurfaceVariant,
             ),
           ),
         ],
@@ -693,101 +866,183 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
     );
   }
 
-  // ── Input Bar ────────────────────────────────────────────────────────────
+  // ── Floating Input Bar ─────────────────────────────────────────────────
 
-  Widget _buildInputBar(bool isLoading) {
+  Widget _buildFloatingInputBar(bool isLoading) {
     return Container(
-      decoration: BoxDecoration(
-        color: WellxColors.cardSurface,
-        border: Border(
-          top: BorderSide(color: WellxColors.border, width: 0.5),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: WellxSpacing.md,
-            vertical: WellxSpacing.sm,
-          ),
-          child: Row(
-            children: [
-              // Camera button
-              GestureDetector(
-                onTap: isLoading ? null : _pickImage,
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: WellxColors.flatCardFill,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: WellxColors.border),
-                  ),
-                  child: Icon(
-                    Icons.add_photo_alternate_rounded,
-                    size: 18,
-                    color: isLoading
-                        ? WellxColors.textTertiary
-                        : WellxColors.deepPurple,
-                  ),
-                ),
+      color: Colors.transparent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Quick suggestion chip
+          if (!isLoading)
+            Padding(
+              padding: const EdgeInsets.only(
+                left: WellxSpacing.lg,
+                right: WellxSpacing.lg,
+                bottom: WellxSpacing.sm,
               ),
-              const SizedBox(width: WellxSpacing.sm),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: WellxColors.background,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: WellxColors.border),
-                  ),
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    enabled: !isLoading,
-                    maxLines: 4,
-                    minLines: 1,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendMessage(),
-                    decoration: InputDecoration(
-                      hintText: 'Ask Dr. Layla...',
-                      hintStyle: WellxTypography.bodyText.copyWith(
-                        color: WellxColors.textTertiary,
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => _sendChip('Tell me about flea & tick prevention'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
                       ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
+                      decoration: BoxDecoration(
+                        color: WellxColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: WellxColors.onSurface.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.auto_awesome,
+                            size: 14,
+                            color: WellxColors.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Flea & Tick',
+                            style: WellxTypography.chipText.copyWith(
+                              color: WellxColors.onSurface,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    style: WellxTypography.bodyText.copyWith(
-                      color: WellxColors.textPrimary,
+                  ),
+                ],
+              ),
+            ),
+
+          // Input bar
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: WellxSpacing.lg),
+            decoration: BoxDecoration(
+              color: WellxColors.surfaceContainerLowest.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: WellxColors.onSurface.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: WellxSpacing.xs,
+                  vertical: WellxSpacing.xs,
+                ),
+                child: Row(
+                  children: [
+                    // Camera / attach button
+                    GestureDetector(
+                      onTap: isLoading ? null : _pickImage,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.add_circle_rounded,
+                          size: 24,
+                          color: isLoading
+                              ? WellxColors.outlineVariant
+                              : WellxColors.onSurfaceVariant,
+                        ),
+                      ),
                     ),
-                  ),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        enabled: !isLoading,
+                        maxLines: 4,
+                        minLines: 1,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _sendMessage(),
+                        decoration: InputDecoration(
+                          hintText: 'Type a message...',
+                          hintStyle: WellxTypography.bodyText.copyWith(
+                            color: WellxColors.outlineVariant,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
+                          ),
+                        ),
+                        style: WellxTypography.bodyText.copyWith(
+                          color: WellxColors.onSurface,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: WellxSpacing.xs),
+                    // Send button
+                    GestureDetector(
+                      onTap: isLoading ? null : _sendMessage,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: isLoading
+                              ? null
+                              : const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    WellxColors.primary,
+                                    WellxColors.aiPurple,
+                                  ],
+                                ),
+                          color: isLoading
+                              ? WellxColors.surfaceContainerHigh
+                              : null,
+                          boxShadow: isLoading
+                              ? null
+                              : [
+                                  BoxShadow(
+                                    color: WellxColors.primary
+                                        .withValues(alpha: 0.3),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                        ),
+                        child: Icon(
+                          Icons.send_rounded,
+                          color: isLoading
+                              ? WellxColors.outlineVariant
+                              : Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: WellxSpacing.sm),
-              GestureDetector(
-                onTap: isLoading ? null : _sendMessage,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: isLoading ? null : WellxColors.primaryGradient,
-                    color: isLoading ? WellxColors.border : null,
-                  ),
-                  child: Icon(
-                    Icons.arrow_upward_rounded,
-                    color: isLoading
-                        ? WellxColors.textTertiary
-                        : Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          // Bottom safe area spacer
+          SizedBox(
+            height: MediaQuery.of(context).padding.bottom + 8,
+          ),
+        ],
       ),
     );
   }
@@ -845,14 +1100,14 @@ class _TypingDotsState extends State<_TypingDots>
       children: List.generate(3, (i) {
         return AnimatedBuilder(
           animation: _anims[i],
-          builder: (_, __) {
+          builder: (_, _) {
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 2.5),
               width: 7,
               height: 7,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: WellxColors.deepPurple
+                color: WellxColors.primary
                     .withValues(alpha: 0.25 + 0.6 * _anims[i].value),
               ),
             );

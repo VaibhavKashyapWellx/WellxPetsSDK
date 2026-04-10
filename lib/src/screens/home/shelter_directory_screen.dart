@@ -1,13 +1,15 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../models/shelter_models.dart';
 import '../../providers/shelter_provider.dart';
 import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
-import '../../widgets/wellx_card.dart';
 
-/// Grid of shelter profiles with photos, names, animal counts, mission statements.
+/// Full-screen shelter directory with user balance hero, community goal,
+/// and shelter-in-need cards matching the "Help Shelters" design reference.
 class ShelterDirectoryScreen extends ConsumerWidget {
   const ShelterDirectoryScreen({super.key});
 
@@ -19,72 +21,84 @@ class ShelterDirectoryScreen extends ConsumerWidget {
     final poolAsync = ref.watch(communityPoolProvider);
 
     return Scaffold(
-      backgroundColor: WellxColors.background,
+      backgroundColor: WellxColors.surface,
       appBar: AppBar(
-        title: const Text('Help Shelters'),
+        title: Text(
+          'Help Shelters',
+          style: WellxTypography.heading,
+        ),
         centerTitle: true,
-        backgroundColor: WellxColors.background,
+        backgroundColor: WellxColors.surface,
         foregroundColor: WellxColors.textPrimary,
         elevation: 0,
+        scrolledUnderElevation: 0,
       ),
       body: RefreshIndicator(
-        color: WellxColors.deepPurple,
+        color: WellxColors.primary,
         onRefresh: () async {
           ref.invalidate(shelterProfilesProvider);
           ref.invalidate(communityPoolProvider);
         },
         child: ListView(
-          padding: const EdgeInsets.all(WellxSpacing.lg),
+          padding: const EdgeInsets.symmetric(horizontal: WellxSpacing.lg),
           children: [
-            // Community pool card
+            const SizedBox(height: WellxSpacing.sm),
+
+            // ── User Balance Hero Card ──
+            _UserBalanceHero(),
+
+            const SizedBox(height: WellxSpacing.xl),
+
+            // ── Community Goal Section ──
             poolAsync.when(
-              data: (pool) => _communityPoolCard(pool),
-              loading: () => const SizedBox.shrink(),
+              data: (pool) => _CommunityGoalSection(pool: pool),
+              loading: () => const SizedBox(height: 120),
               error: (_, __) => const SizedBox.shrink(),
+            ),
+
+            const SizedBox(height: WellxSpacing.xl),
+
+            // ── Filter Row ──
+            _FilterRow(
+              state: screenState,
+              notifier: screenNotifier,
             ),
 
             const SizedBox(height: WellxSpacing.lg),
 
-            // Filter row
-            _filterRow(screenState, screenNotifier),
-
-            const SizedBox(height: WellxSpacing.lg),
-
-            // Shelter grid
+            // ── Shelter Cards List ──
             profilesAsync.when(
               data: (profiles) {
                 final filtered = screenState.filterProfiles(profiles);
                 if (filtered.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Center(
                       child: Text(
                         'No shelters found',
-                        style: TextStyle(color: WellxColors.textTertiary),
+                        style: WellxTypography.captionText.copyWith(
+                          color: WellxColors.textTertiary,
+                        ),
                       ),
                     ),
                   );
                 }
-                return GridView.builder(
+                return ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.75,
-                  ),
                   itemCount: filtered.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: WellxSpacing.xl),
                   itemBuilder: (context, index) =>
-                      _shelterCard(filtered[index]),
+                      _ShelterCard(shelter: filtered[index]),
                 );
               },
               loading: () => const Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Center(
                   child: CircularProgressIndicator(
-                      color: WellxColors.deepPurple),
+                    color: WellxColors.primary,
+                  ),
                 ),
               ),
               error: (error, _) => Padding(
@@ -106,140 +120,337 @@ class ShelterDirectoryScreen extends ConsumerWidget {
               ),
             ),
 
-            const SizedBox(height: 40),
+            // Bottom padding for floating nav bar
+            const SizedBox(height: 120),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _communityPoolCard(CommunityPool pool) {
-    return WellxCard(
-      backgroundColor: WellxColors.deepPurple.withValues(alpha: 0.04),
-      borderColor: WellxColors.deepPurple.withValues(alpha: 0.15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+// ─────────────────────────────────────────────────────────────────────────────
+// User Balance Hero Card
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _UserBalanceHero extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: WellxColors.onPrimaryFixedVariant,
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          // Header
-          Row(
-            children: [
-              Icon(Icons.public,
-                  size: 14, color: WellxColors.deepPurple),
-              const SizedBox(width: 6),
-              Text(
-                pool.monthLabel.toUpperCase(),
-                style: WellxTypography.sectionLabel.copyWith(
-                  color: WellxColors.deepPurple,
-                  letterSpacing: 1.2,
-                ),
+          // Decorative blur orb
+          Positioned(
+            right: -40,
+            top: -40,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: WellxColors.primaryFixedDim.withValues(alpha: 0.20),
               ),
-              const Spacer(),
-              if (pool.donorCount > 0)
-                Text(
-                  '${pool.donorCount} donors',
-                  style: WellxTypography.microLabel.copyWith(
-                    color: WellxColors.deepPurple,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-            ],
-          ),
-
-          const SizedBox(height: WellxSpacing.sm),
-
-          Text(
-            'Community Donation Pool',
-            style: WellxTypography.heading.copyWith(fontSize: 18),
-          ),
-
-          const SizedBox(height: WellxSpacing.md),
-
-          // Coin count
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Icon(Icons.star, size: 22, color: WellxColors.amberWatch),
-              const SizedBox(width: 8),
-              Text(
-                '${pool.totalCoins}',
-                style: const TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: WellxColors.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('coins this month',
-                      style: WellxTypography.captionText),
-                  Text(
-                    '~AED ${pool.aedEquivalent}',
-                    style: WellxTypography.captionText.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: WellxColors.amberWatch,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: WellxSpacing.md),
-
-          // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            child: LinearProgressIndicator(
-              value: pool.progress,
-              minHeight: 10,
-              backgroundColor: WellxColors.deepPurple.withValues(alpha: 0.12),
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(WellxColors.deepPurple),
             ),
           ),
-
-          const SizedBox(height: WellxSpacing.xs),
-
-          Row(
-            children: [
-              if (pool.userContribution > 0)
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(WellxSpacing.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  'You: ${pool.userContribution} coins',
-                  style: WellxTypography.microLabel.copyWith(
-                    color: WellxColors.coral,
-                    fontWeight: FontWeight.w600,
+                  'Your Balance',
+                  style: WellxTypography.smallLabel.copyWith(
+                    color: WellxColors.onPrimary.withValues(alpha: 0.80),
                   ),
-                )
-              else
-                Text(
-                  'Be the first to donate this month!',
-                  style: WellxTypography.microLabel,
                 ),
-              const Spacer(),
-              Text(
-                'Goal: ${pool.monthGoal}',
-                style: WellxTypography.microLabel,
-              ),
-            ],
+                const SizedBox(height: WellxSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Text(
+                            '2,450',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                              color: WellxColors.onPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: WellxSpacing.sm),
+                          Icon(
+                            Icons.generating_tokens,
+                            color: WellxColors.tertiaryContainer,
+                            size: 24,
+                          ),
+                          const SizedBox(width: WellxSpacing.xs),
+                          Text(
+                            'Coins',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: WellxColors.onPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: WellxSpacing.lg),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: WellxColors.primaryContainer,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Earn More',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: WellxColors.onPrimaryContainer,
+                          ),
+                        ),
+                        const SizedBox(width: WellxSpacing.sm),
+                        Icon(
+                          Icons.arrow_forward,
+                          size: 16,
+                          color: WellxColors.onPrimaryContainer,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _filterRow(
-      ShelterScreenState state, ShelterScreenNotifier notifier) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Community Goal Section
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CommunityGoalSection extends StatelessWidget {
+  final CommunityPool pool;
+  const _CommunityGoalSection({required this.pool});
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (pool.progress * 100).round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              'Community Goal',
+              style: WellxTypography.heading,
+            ),
+            Text(
+              '$percent% Reached',
+              style: WellxTypography.captionText.copyWith(
+                fontWeight: FontWeight.w600,
+                color: WellxColors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: WellxSpacing.lg),
+
+        // Card body
+        Container(
+          padding: const EdgeInsets.all(WellxSpacing.xl),
+          decoration: BoxDecoration(
+            color: WellxColors.surfaceContainer,
+            borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+          ),
+          child: Column(
+            children: [
+              // Progress bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: SizedBox(
+                  height: 12,
+                  child: Stack(
+                    children: [
+                      // Background
+                      Container(
+                        decoration: BoxDecoration(
+                          color: WellxColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      // Fill
+                      FractionallySizedBox(
+                        widthFactor: pool.progress.clamp(0.0, 1.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: WellxColors.primary,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: WellxSpacing.lg),
+
+              // Avatars + Target row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Avatar stack
+                  SizedBox(
+                    height: 32,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        _avatarCircle(0, WellxColors.primaryFixedDim),
+                        _avatarCircle(1, WellxColors.secondaryContainer),
+                        _avatarCircle(2, WellxColors.surfaceContainerHigh),
+                        // +count badge
+                        Positioned(
+                          left: 3 * 22.0,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: WellxColors.primaryContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '+${_formatCompact(pool.donorCount)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: WellxColors.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Target
+                  Row(
+                    children: [
+                      Text(
+                        'Target: ',
+                        style: WellxTypography.captionText,
+                      ),
+                      Text(
+                        _formatWithCommas(pool.monthGoal),
+                        style: WellxTypography.captionText.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: WellxColors.onSurface,
+                        ),
+                      ),
+                      Text(
+                        ' coins',
+                        style: WellxTypography.captionText,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: WellxSpacing.lg),
+
+              // Motivational quote
+              Text(
+                '"Every coin fuels medical supplies and healthy meals for our furry friends in need."',
+                style: WellxTypography.captionText.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: WellxColors.onSurfaceVariant,
+                  height: 1.6,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _avatarCircle(int index, Color color) {
+    return Positioned(
+      left: index * 22.0,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          Icons.person,
+          size: 16,
+          color: WellxColors.onSurfaceVariant.withValues(alpha: 0.5),
+        ),
+      ),
+    );
+  }
+
+  String _formatCompact(int n) {
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(0)}k';
+    return '$n';
+  }
+
+  String _formatWithCommas(int n) {
+    final s = n.toString();
+    final buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Filter Row
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FilterRow extends StatelessWidget {
+  final ShelterScreenState state;
+  final ShelterScreenNotifier notifier;
+  const _FilterRow({required this.state, required this.notifier});
+
+  @override
+  Widget build(BuildContext context) {
     const filters = ['All', 'Dogs', 'Cats', 'Both'];
     return Row(
       children: [
         Text(
-          'SHELTERS',
-          style: WellxTypography.sectionLabel.copyWith(
-            color: WellxColors.deepPurple,
-            letterSpacing: 1.5,
-          ),
+          'Shelters in Need',
+          style: WellxTypography.heading,
         ),
         const Spacer(),
         ...filters.map((f) {
@@ -249,13 +460,13 @@ class ShelterDirectoryScreen extends ConsumerWidget {
             child: GestureDetector(
               onTap: () => notifier.setFilter(f),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? WellxColors.textPrimary
-                      : WellxColors.flatCardFill,
-                  borderRadius: BorderRadius.circular(12),
+                      ? WellxColors.onSurface
+                      : WellxColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   f,
@@ -274,81 +485,162 @@ class ShelterDirectoryScreen extends ConsumerWidget {
       ],
     );
   }
+}
 
-  Widget _shelterCard(ShelterProfile shelter) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Shelter Card
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ShelterCard extends StatelessWidget {
+  final ShelterProfile shelter;
+  const _ShelterCard({required this.shelter});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: WellxColors.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: WellxColors.border),
+        color: WellxColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 50,
+            offset: const Offset(0, 20),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Photo or placeholder
+          // ── Image with tags ──
           SizedBox(
-            height: 90,
+            height: 224,
             width: double.infinity,
-            child: shelter.photoUrl != null
-                ? Image.network(
-                    shelter.photoUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        _shelterPlaceholder(shelter),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Photo
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(WellxSpacing.cardRadius),
+                    topRight: Radius.circular(WellxSpacing.cardRadius),
+                  ),
+                  child: shelter.photoUrl != null
+                      ? Image.network(
+                          shelter.photoUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _shelterPlaceholder(),
+                        )
+                      : _shelterPlaceholder(),
+                ),
+                // Category tags
+                if (shelter.currentNeeds != null &&
+                    shelter.currentNeeds!.isNotEmpty)
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: shelter.currentNeeds!
+                          .take(3)
+                          .map((need) => _tagChip(need))
+                          .toList(),
+                    ),
                   )
-                : _shelterPlaceholder(shelter),
+                else if (shelter.shelterType != null)
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: _tagChip(shelter.typeLabel),
+                  ),
+              ],
+            ),
           ),
 
+          // ── Text content ──
           Padding(
-            padding: const EdgeInsets.all(WellxSpacing.md),
+            padding: const EdgeInsets.all(WellxSpacing.xl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Shelter name
                 Text(
                   shelter.name,
-                  style: WellxTypography.chipText.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: WellxTypography.cardTitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(shelter.animalIcon,
-                        size: 10, color: shelter.animalColor),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        '${shelter.typeLabel} \u{00B7} ${shelter.location ?? ""}',
-                        style: WellxTypography.microLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+
+                const SizedBox(height: WellxSpacing.xs),
+
+                // Location
+                if (shelter.location != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: WellxColors.onSurfaceVariant,
                       ),
-                    ),
-                  ],
-                ),
-                if (shelter.animalsInCare != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '${shelter.animalsInCare} animals in care',
-                    style: WellxTypography.microLabel.copyWith(
-                      color: WellxColors.deepPurple,
-                    ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          shelter.location!,
+                          style: WellxTypography.captionText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-                if (shelter.mission != null) ...[
-                  const SizedBox(height: 4),
+
+                const SizedBox(height: WellxSpacing.lg),
+
+                // Description or mission
+                if (shelter.description != null || shelter.mission != null)
                   Text(
-                    shelter.mission!,
-                    style: WellxTypography.microLabel.copyWith(
-                      color: WellxColors.textTertiary,
+                    shelter.description ?? shelter.mission ?? '',
+                    style: WellxTypography.captionText.copyWith(
+                      color: WellxColors.onSurfaceVariant,
+                      height: 1.6,
                     ),
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ],
+
+                const SizedBox(height: WellxSpacing.lg),
+
+                // Donate button
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: WellxColors.primary,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Donate Coins',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: WellxColors.onPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: WellxSpacing.sm),
+                      Icon(
+                        Icons.volunteer_activism,
+                        size: 18,
+                        color: WellxColors.onPrimary,
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -357,14 +649,33 @@ class ShelterDirectoryScreen extends ConsumerWidget {
     );
   }
 
-  Widget _shelterPlaceholder(ShelterProfile shelter) {
+  Widget _tagChip(String label) {
     return Container(
-      color: shelter.animalColor.withValues(alpha: 0.08),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: WellxColors.tertiaryContainer.withValues(alpha: 0.90),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: GoogleFonts.inter(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+          color: WellxColors.tertiaryDim,
+        ),
+      ),
+    );
+  }
+
+  Widget _shelterPlaceholder() {
+    return Container(
+      color: WellxColors.surfaceContainerHigh,
       child: Center(
         child: Icon(
-          shelter.animalIcon,
-          size: 28,
-          color: shelter.animalColor.withValues(alpha: 0.3),
+          Icons.pets,
+          size: 40,
+          color: WellxColors.outlineVariant.withValues(alpha: 0.4),
         ),
       ),
     );

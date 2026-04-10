@@ -1,4 +1,6 @@
-/// Spacing scale for Wellx Pets (4pt grid).
+/// Spacing scale for Wellx Pets (8pt grid, "Digital Sanctuary").
+///
+/// Prioritises "breathing room" — when in doubt, add 8px.
 class WellxSpacing {
   WellxSpacing._();
 
@@ -9,9 +11,12 @@ class WellxSpacing {
   static const double xl = 24;
   static const double xxl = 32;
 
-  /// Default card corner radius.
-  static const double cardRadius = 20;
+  /// Default card corner radius (24px — design system minimum for primary cards).
+  static const double cardRadius = 24;
+
+  /// Large hero section radius (32px).
+  static const double heroRadius = 32;
 
   /// Default card padding.
-  static const double cardPadding = 16;
+  static const double cardPadding = 20;
 }

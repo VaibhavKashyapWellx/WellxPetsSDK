@@ -1,41 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'wellx_colors.dart';
 import 'wellx_typography.dart';
 import 'wellx_spacing.dart';
 
-/// Complete Material theme for Wellx Pets.
+/// Complete Material theme for Wellx Pets "Digital Sanctuary".
+///
+/// No-line rule: borders are prohibited. Boundaries via tonal shifts & shadows.
 class WellxPetsTheme {
   WellxPetsTheme._();
 
   static ThemeData get theme => ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        colorScheme: const ColorScheme.light(
-          primary: WellxColors.deepPurple,
-          onPrimary: Colors.white,
-          primaryContainer: WellxColors.lightPurple,
-          secondary: WellxColors.midPurple,
-          onSecondary: Colors.white,
-          surface: WellxColors.cardSurface,
-          onSurface: WellxColors.textPrimary,
-          error: WellxColors.alertRed,
-          onError: Colors.white,
+        colorScheme: ColorScheme.light(
+          primary: WellxColors.primary,
+          onPrimary: WellxColors.onPrimary,
+          primaryContainer: WellxColors.primaryContainer,
+          secondary: WellxColors.secondary,
+          onSecondary: WellxColors.onPrimary,
+          tertiary: WellxColors.tertiary,
+          tertiaryContainer: WellxColors.tertiaryContainer,
+          surface: WellxColors.surfaceContainerLowest,
+          onSurface: WellxColors.onSurface,
+          surfaceContainerLowest: WellxColors.surfaceContainerLowest,
+          surfaceContainerLow: WellxColors.surfaceContainerLow,
+          surfaceContainer: WellxColors.surfaceContainer,
+          surfaceContainerHigh: WellxColors.surfaceContainerHigh,
+          surfaceContainerHighest: WellxColors.surfaceContainerHighest,
+          error: WellxColors.error,
+          onError: WellxColors.onError,
+          outline: WellxColors.outline,
+          outlineVariant: WellxColors.outlineVariant,
         ),
-        scaffoldBackgroundColor: WellxColors.background,
+        scaffoldBackgroundColor: WellxColors.surface,
+        // No-line rule: cards have NO border, use tonal shadow instead
         cardTheme: CardThemeData(
-          color: WellxColors.cardSurface,
+          color: WellxColors.surfaceContainerLowest,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
-            side: const BorderSide(color: WellxColors.border, width: 1),
           ),
           margin: EdgeInsets.zero,
         ),
         appBarTheme: AppBarTheme(
-          backgroundColor: WellxColors.background,
-          foregroundColor: WellxColors.textPrimary,
+          backgroundColor: Colors.transparent,
+          foregroundColor: WellxColors.onSurface,
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: false,
@@ -44,61 +56,59 @@ class WellxPetsTheme {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: WellxColors.flatCardFill,
+          fillColor: WellxColors.surfaceContainerLowest,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: WellxColors.border),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: WellxColors.border),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: WellxColors.deepPurple, width: 2),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: WellxColors.primary, width: 2),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: WellxSpacing.lg,
-            vertical: WellxSpacing.md,
+            vertical: WellxSpacing.lg,
           ),
           hintStyle: WellxTypography.bodyText.copyWith(
-            color: WellxColors.textTertiary,
+            color: WellxColors.outlineVariant,
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: WellxColors.deepPurple,
+            backgroundColor: WellxColors.primary,
             foregroundColor: Colors.white,
             elevation: 0,
             padding: const EdgeInsets.symmetric(
               horizontal: WellxSpacing.xl,
               vertical: WellxSpacing.lg,
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+            shape: const StadiumBorder(),
             textStyle: WellxTypography.buttonLabel,
           ),
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            foregroundColor: WellxColors.deepPurple,
+            foregroundColor: WellxColors.primary,
             textStyle: WellxTypography.buttonLabel.copyWith(
-              color: WellxColors.deepPurple,
+              color: WellxColors.primary,
             ),
           ),
         ),
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           backgroundColor: WellxColors.inkPrimary,
           selectedItemColor: Colors.white,
-          unselectedItemColor: WellxColors.textTertiary,
+          unselectedItemColor: WellxColors.outline,
         ),
-        dividerTheme: const DividerThemeData(
-          color: WellxColors.border,
-          thickness: 1,
+        dividerTheme: DividerThemeData(
+          color: WellxColors.outlineVariant.withValues(alpha: 0.15),
+          thickness: 0,
           space: 0,
         ),
-        textTheme: TextTheme(
+        textTheme: GoogleFonts.interTextTheme().copyWith(
           displayLarge: WellxTypography.heroDisplay,
           headlineLarge: WellxTypography.screenTitle,
           headlineMedium: WellxTypography.heading,

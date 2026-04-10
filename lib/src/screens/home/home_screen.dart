@@ -1,7 +1,8 @@
-import 'dart:math' as math;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../providers/credit_provider.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/pet_provider.dart';
@@ -10,11 +11,11 @@ import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
 import '../../widgets/wellx_card.dart';
-import '../../widgets/wellx_loading_widget.dart';
+import '../../widgets/shimmer_loading.dart';
 import 'daily_plan_card.dart';
 import 'furever_impact_section.dart';
 
-/// Home tab — health score, daily plan, shelter impact.
+/// Home tab — wellness score hero, Dr. Layla, daily plan, records, shelter impact.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -99,56 +100,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       _triggerScoreAnimation(healthScore.overall);
     }
 
-    return SafeArea(
-      child: RefreshIndicator(
-        color: WellxColors.deepPurple,
+    return Scaffold(
+      backgroundColor: WellxColors.surface,
+      extendBodyBehindAppBar: true,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              color: WellxColors.surface.withValues(alpha: 0.8),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: WellxSpacing.lg,
+                    vertical: WellxSpacing.sm,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          // Pet avatar with primary-container ring
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: WellxColors.primaryContainer,
+                                width: 2,
+                              ),
+                            ),
+                            child: ClipOval(
+                              child: Container(
+                                color: WellxColors.surfaceContainerLow,
+                                child: Center(
+                                  child: Text(
+                                    selectedPet?.speciesEmoji ?? '🐾',
+                                    style: const TextStyle(fontSize: 20),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Wellx Pet',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.3,
+                              color: WellxColors.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () => context.push('/settings'),
+                        child: const Icon(
+                          Icons.notifications_outlined,
+                          color: WellxColors.primary,
+                          size: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: RefreshIndicator(
+        color: WellxColors.primary,
         displacement: 40,
         onRefresh: _onRefresh,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(WellxSpacing.lg),
+          padding: const EdgeInsets.only(
+            left: WellxSpacing.lg,
+            right: WellxSpacing.lg,
+            top: 88,
+            bottom: 120,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: WellxSpacing.lg),
-
-              // Title bar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Wellx Pets', style: WellxTypography.screenTitle),
-                  Row(
-                    children: [
-                      if (hasPets)
-                        GestureDetector(
-                          onTap: () => context.push('/add-pet'),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: WellxColors.cardSurface,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: WellxColors.border),
-                            ),
-                            child: const Icon(Icons.add,
-                                color: WellxColors.textSecondary, size: 16),
-                          ),
-                        ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: () => context.push('/settings'),
-                        child: const Icon(Icons.settings_outlined,
-                            color: WellxColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: WellxSpacing.lg),
-
               // Pet selector (shown when multiple pets)
-              if (pets.length > 1)
+              if (pets.length > 1) ...[
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -168,14 +209,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? WellxColors.textPrimary
-                                  : WellxColors.cardSurface,
+                                  ? WellxColors.primary
+                                  : WellxColors.surfaceContainerLowest,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.transparent
-                                    : WellxColors.border,
-                              ),
+                              boxShadow: isSelected
+                                  ? WellxColors.tonalShadow
+                                  : WellxColors.subtleShadow,
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -189,7 +228,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                     fontWeight: FontWeight.w600,
                                     color: isSelected
                                         ? Colors.white
-                                        : WellxColors.textPrimary,
+                                        : WellxColors.onSurface,
                                   ),
                                 ),
                               ],
@@ -200,16 +239,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     }).toList(),
                   ),
                 ),
+                const SizedBox(height: WellxSpacing.xl),
+              ],
 
-              const SizedBox(height: WellxSpacing.xl),
-
-              // Health score card
+              // ── Wellness Score Hero Card ──
               if (!hasPets)
                 _AddFirstPetCard(onTap: () => context.push('/add-pet'))
               else if (isLoading)
-                const ShimmerCard(height: 160)
+                const ShimmerCard(height: 200)
               else if (isScoreUnlocked)
-                _AnimatedScoreCard(
+                _WellnessScoreHeroCard(
                   score: healthScore,
                   petName: selectedPet?.name,
                   animation: _scoreAnim,
@@ -219,94 +258,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
               const SizedBox(height: WellxSpacing.xl),
 
-              // Domain pillar cards
-              if (isScoreUnlocked) ...[
-                Text(
-                  'HEALTH DOMAINS',
-                  style: WellxTypography.sectionLabel.copyWith(
-                    color: WellxColors.deepPurple,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-                const SizedBox(height: WellxSpacing.md),
-                GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 1.5,
-                  children: healthScore.pillars.map((pillar) {
-                    return _DomainPillarCard(pillar: pillar);
-                  }).toList(),
-                ),
-                const SizedBox(height: WellxSpacing.xl),
-              ],
-
-              // Today's Plan
-              Text(
-                "TODAY'S PLAN",
-                style: WellxTypography.sectionLabel.copyWith(
-                  color: WellxColors.textSecondary,
-                  letterSpacing: 1.5,
-                ),
+              // ── Ask Dr. Layla Section ──
+              _AskDrLaylaCard(
+                onTap: () => context.push('/vet'),
               ),
-              const SizedBox(height: WellxSpacing.sm),
+
+              const SizedBox(height: WellxSpacing.xl),
+
+              // ── Today's Plan Section ──
               DailyPlanCard(petName: selectedPet?.name ?? 'Your pet'),
 
               const SizedBox(height: WellxSpacing.xl),
 
-              // Quick access — Explore section
-              Text(
-                'EXPLORE',
-                style: WellxTypography.sectionLabel.copyWith(
-                  color: WellxColors.textSecondary,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: WellxSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ExploreCard(
-                      icon: Icons.place_rounded,
-                      label: 'Venues',
-                      color: WellxColors.bodyActivity,
-                      onTap: () => context.push('/venues'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _ExploreCard(
-                      icon: Icons.flight_rounded,
-                      label: 'Travel',
-                      color: WellxColors.scoreBlue,
-                      onTap: () => context.push('/travel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _ExploreCard(
-                      icon: Icons.medication_rounded,
-                      label: 'Meds',
-                      color: WellxColors.inflammation,
-                      onTap: () {
-                        final id = selectedPet?.id;
-                        if (id != null) context.push('/medications/$id');
-                      },
-                    ),
-                  ),
-                ],
+              // ── Recent Records Section ──
+              _RecentRecordsSection(
+                petId: petId,
+                onViewAll: () => context.push('/wallet'),
               ),
 
               const SizedBox(height: WellxSpacing.xl),
 
-              // Shelter impact section
+              // ── Shelter Impact Section ──
               FureverImpactSection(
                 coinsBalance: balance?.coinsBalance ?? 0,
               ),
 
-              const SizedBox(height: 100),
+              const SizedBox(height: 120),
             ],
           ),
         ),
@@ -316,225 +293,468 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 }
 
 // ---------------------------------------------------------------------------
-// Animated Score Card with CustomPainter ring
+// Wellness Score Hero Card (Purple gradient)
 // ---------------------------------------------------------------------------
 
-class _AnimatedScoreCard extends StatelessWidget {
+class _WellnessScoreHeroCard extends StatelessWidget {
   final HealthScore score;
   final String? petName;
   final Animation<double> animation;
 
-  const _AnimatedScoreCard({
+  const _WellnessScoreHeroCard({
     required this.score,
     this.petName,
     required this.animation,
   });
 
+  String _scoreLabel(int s) {
+    if (s >= 80) return 'Excellent';
+    if (s >= 65) return 'Good';
+    if (s >= 50) return 'Fair';
+    return 'Needs Attention';
+  }
+
   @override
   Widget build(BuildContext context) {
-    return WellxCard(
-      backgroundColor: WellxColors.inkPrimary,
-      borderColor: Colors.transparent,
-      child: Row(
-        children: [
-          // Animated score ring
-          AnimatedBuilder(
-            animation: animation,
-            builder: (context, _) {
-              final progress = (score.overall / 100.0) * animation.value;
-              return SizedBox(
-                width: 100,
-                height: 100,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CustomPaint(
-                      size: const Size(100, 100),
-                      painter: _ScoreRingPainter(
-                        progress: progress,
-                        color: WellxColors.scoreColor(score.overall),
-                        backgroundColor: Colors.white.withValues(alpha: 0.08),
-                        strokeWidth: 7,
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        final animatedScore = (score.overall * animation.value).round();
+        final progress = (score.overall / 100.0) * animation.value;
+        final label = _scoreLabel(score.overall);
+
+        return Container(
+          padding: const EdgeInsets.all(WellxSpacing.xxl),
+          decoration: BoxDecoration(
+            gradient: WellxColors.primaryGradient,
+            borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+            boxShadow: [
+              BoxShadow(
+                color: WellxColors.primary.withValues(alpha: 0.35),
+                blurRadius: 32,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              // Decorative blur orbs
+              Positioned(
+                top: -48,
+                right: -48,
+                child: Container(
+                  width: 192,
+                  height: 192,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: WellxColors.primaryFixedDim.withValues(alpha: 0.20),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: -32,
+                left: -32,
+                child: Container(
+                  width: 128,
+                  height: 128,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color:
+                        WellxColors.secondaryContainer.withValues(alpha: 0.10),
+                  ),
+                ),
+              ),
+
+              // Content
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top row: label + badge
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'WELLNESS SCORE',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.5,
+                              color: WellxColors.primaryFixedDim,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                '$animatedScore',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.1,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                '/100',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+
+                      // Excellent badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: WellxColors.tertiaryContainer,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              label,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: WellxSpacing.xl),
+
+                  // Progress bar
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(100),
+                    child: Stack(
                       children: [
-                        Text(
-                          '${(score.overall * animation.value).round()}',
-                          style: WellxTypography.heroDisplay.copyWith(
-                            fontSize: 30,
-                            color: Colors.white,
+                        // Track
+                        Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(100),
                           ),
                         ),
-                        Text(
-                          '/ 100',
-                          style: WellxTypography.microLabel.copyWith(
-                            color: Colors.white54,
+                        // Fill with glow
+                        FractionallySizedBox(
+                          widthFactor: progress.clamp(0.0, 1.0),
+                          child: Container(
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: WellxColors.tertiaryContainer,
+                              borderRadius: BorderRadius.circular(100),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: WellxColors.tertiaryContainer
+                                      .withValues(alpha: 0.5),
+                                  blurRadius: 12,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-
-          const SizedBox(width: WellxSpacing.lg),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Health Score',
-                  style: WellxTypography.cardTitle.copyWith(
-                    color: Colors.white,
                   ),
-                ),
-                const SizedBox(height: 4),
-                if (petName != null)
+
+                  const SizedBox(height: WellxSpacing.lg),
+
+                  // Description
                   Text(
-                    petName!,
-                    style: WellxTypography.captionText.copyWith(
-                      color: Colors.white60,
+                    petName != null
+                        ? '$petName is in ${label.toLowerCase()} condition! ${score.weakestPillar != null ? 'Focus area: ${score.weakestPillar!.name}.' : ''}'
+                        : 'Your pet is doing well! Keep up the great care routine.',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w300,
+                      height: 1.6,
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
-                const SizedBox(height: WellxSpacing.sm),
-                // Score label badge
-                _scoreBadge(score.overall),
-                const SizedBox(height: WellxSpacing.xs),
-                // Weakest pillar
-                if (score.weakestPillar != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Focus: ${score.weakestPillar!.name}',
-                      style: WellxTypography.microLabel.copyWith(
-                        color: Colors.white70,
-                      ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ask Dr. Layla Card
+// ---------------------------------------------------------------------------
+
+class _AskDrLaylaCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AskDrLaylaCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return WellxCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8E0FF), // indigo-100
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.smart_toy,
+                  color: WellxColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Ask Dr. Layla',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: WellxColors.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: WellxSpacing.md),
+          Text(
+            'Worried about a symptom or need diet advice?',
+            style: WellxTypography.bodyText.copyWith(
+              color: WellxColors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: WellxSpacing.lg),
+          GestureDetector(
+            onTap: onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: WellxColors.primary,
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Start Chat',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: WellxColors.onPrimary,
                     ),
                   ),
-              ],
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: WellxColors.onPrimary,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _scoreBadge(int score) {
-    final String label;
-    final Color color;
-    if (score >= 80) {
-      label = 'Excellent';
-      color = WellxColors.scoreGreen;
-    } else if (score >= 65) {
-      label = 'Good';
-      color = WellxColors.scoreBlue;
-    } else if (score >= 50) {
-      label = 'Fair';
-      color = WellxColors.scoreOrange;
-    } else {
-      label = 'Needs Attention';
-      color = WellxColors.scoreRed;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: color,
-          letterSpacing: 0.3,
+// ---------------------------------------------------------------------------
+// Recent Records Section
+// ---------------------------------------------------------------------------
+
+class _RecentRecordsSection extends StatelessWidget {
+  final String? petId;
+  final VoidCallback onViewAll;
+
+  const _RecentRecordsSection({
+    this.petId,
+    required this.onViewAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Recent Records',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: WellxColors.onSurface,
+              ),
+            ),
+            GestureDetector(
+              onTap: onViewAll,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'View All',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: WellxColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.arrow_forward,
+                    size: 14,
+                    color: WellxColors.primary,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ),
+
+        const SizedBox(height: WellxSpacing.lg),
+
+        // Horizontal scrollable record cards
+        SizedBox(
+          height: 160,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            children: [
+              _RecordCard(
+                icon: Icons.vaccines,
+                iconColor: WellxColors.primary.withValues(alpha: 0.7),
+                category: 'VACCINATION',
+                title: 'Rabies Booster',
+                date: 'Last recorded',
+              ),
+              const SizedBox(width: WellxSpacing.lg),
+              _RecordCard(
+                icon: Icons.monitor_weight,
+                iconColor: WellxColors.tertiaryContainer,
+                category: 'VITAL SIGN',
+                title: 'Weight Check',
+                date: 'Last recorded',
+              ),
+              const SizedBox(width: WellxSpacing.lg),
+              _RecordCard(
+                icon: Icons.history_edu,
+                iconColor: WellxColors.alertOrange,
+                category: 'JOURNAL',
+                title: 'Health Notes',
+                date: 'Last recorded',
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Score Ring Painter (matches iOS circular arc style)
-// ---------------------------------------------------------------------------
+class _RecordCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String category;
+  final String title;
+  final String date;
 
-class _ScoreRingPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  final Color backgroundColor;
-  final double strokeWidth;
-
-  const _ScoreRingPainter({
-    required this.progress,
-    required this.color,
-    required this.backgroundColor,
-    required this.strokeWidth,
+  const _RecordCard({
+    required this.icon,
+    required this.iconColor,
+    required this.category,
+    required this.title,
+    required this.date,
   });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - strokeWidth) / 2;
-
-    // Background track
-    final bgPaint = Paint()
-      ..color = backgroundColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-    canvas.drawCircle(center, radius, bgPaint);
-
-    // Foreground arc
-    final fgPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2, // start at top
-      2 * math.pi * progress,
-      false,
-      fgPaint,
+  Widget build(BuildContext context) {
+    return WellxCard(
+      padding: const EdgeInsets.all(WellxSpacing.xl),
+      child: SizedBox(
+        width: 160,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: iconColor, size: 28),
+            const SizedBox(height: WellxSpacing.md),
+            Text(
+              category,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: WellxColors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: WellxColors.onSurface,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Spacer(),
+            Text(
+              date,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: WellxColors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
-
-    // Glow effect at tip
-    if (progress > 0.02) {
-      final glowPaint = Paint()
-        ..color = color.withValues(alpha: 0.35)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth + 4
-        ..strokeCap = StrokeCap.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-
-      final sweepAngle = 2 * math.pi * progress;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2 + sweepAngle - 0.15,
-        0.15,
-        false,
-        glowPaint,
-      );
-    }
   }
-
-  @override
-  bool shouldRepaint(_ScoreRingPainter old) =>
-      old.progress != progress || old.color != color;
 }
 
 // ---------------------------------------------------------------------------
@@ -547,10 +767,19 @@ class _AddFirstPetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WellxCard(
+    return Container(
       padding: const EdgeInsets.all(WellxSpacing.xxl),
-      backgroundColor: WellxColors.inkPrimary,
-      borderColor: Colors.transparent,
+      decoration: BoxDecoration(
+        gradient: WellxColors.primaryGradient,
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+        boxShadow: [
+          BoxShadow(
+            color: WellxColors.primary.withValues(alpha: 0.35),
+            blurRadius: 32,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
       child: Center(
         child: Column(
           children: [
@@ -567,14 +796,20 @@ class _AddFirstPetCard extends StatelessWidget {
             Text(
               'Add your first pet\nto get started',
               textAlign: TextAlign.center,
-              style: WellxTypography.heading.copyWith(color: Colors.white),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: WellxSpacing.sm),
             Text(
-              'Track health, chat with Dr. Layla,\nand unlock your pet\'s health score.',
+              'Track health, chat with Dr. Layla,\nand unlock your pet\'s wellness score.',
               textAlign: TextAlign.center,
-              style: WellxTypography.captionText.copyWith(
-                color: Colors.white60,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.white.withValues(alpha: 0.7),
+                height: 1.5,
               ),
             ),
             const SizedBox(height: WellxSpacing.xl),
@@ -587,17 +822,20 @@ class _AddFirstPetCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(100),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.add_circle_outline, size: 18),
+                    const Icon(Icons.add_circle_outline,
+                        size: 18, color: WellxColors.primary),
                     const SizedBox(width: WellxSpacing.sm),
                     Text(
                       'Add a Pet',
-                      style: WellxTypography.buttonLabel.copyWith(
-                        color: WellxColors.textPrimary,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: WellxColors.primary,
                       ),
                     ),
                   ],
@@ -612,7 +850,7 @@ class _AddFirstPetCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Locked Score Card with elegant gradient + lock icon
+// Locked Score Card
 // ---------------------------------------------------------------------------
 
 class _LockedScoreCard extends StatelessWidget {
@@ -627,282 +865,127 @@ class _LockedScoreCard extends StatelessWidget {
         padding: const EdgeInsets.all(WellxSpacing.xxl),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [WellxColors.inkPrimary, Color(0xFF2D1B6B)],
-          ),
+          gradient: WellxColors.primaryGradient,
+          boxShadow: [
+            BoxShadow(
+              color: WellxColors.primary.withValues(alpha: 0.35),
+              blurRadius: 32,
+              offset: const Offset(0, 12),
+            ),
+          ],
         ),
-        child: Center(
-          child: Column(
-            children: [
-              // Lock icon in a glowing circle
-              Container(
-                width: 68,
-                height: 68,
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            // Decorative blur orbs
+            Positioned(
+              top: -48,
+              right: -48,
+              child: Container(
+                width: 192,
+                height: 192,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.08),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    width: 1,
+                  color: WellxColors.primaryFixedDim.withValues(alpha: 0.20),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -32,
+              left: -32,
+              child: Container(
+                width: 128,
+                height: 128,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: WellxColors.secondaryContainer.withValues(alpha: 0.10),
+                ),
+              ),
+            ),
+            // Content
+            Center(
+              child: Column(
+                children: [
+                  // Lock icon in a glowing circle
+                  Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.08),
+                      boxShadow: [
+                        BoxShadow(
+                          color: WellxColors.primary.withValues(alpha: 0.4),
+                          blurRadius: 24,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.lock_rounded,
+                      color: Colors.white,
+                      size: 30,
+                    ),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: WellxColors.deepPurple.withValues(alpha: 0.4),
-                      blurRadius: 24,
-                      spreadRadius: 4,
+                  const SizedBox(height: WellxSpacing.lg),
+                  Text(
+                    'Health Score Locked',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.lock_rounded,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(height: WellxSpacing.lg),
-              Text(
-                'Health Score Locked',
-                style: WellxTypography.heading.copyWith(color: Colors.white),
-              ),
-              const SizedBox(height: WellxSpacing.xs),
-              Text(
-                'Complete a body scan to unlock\nyour pet\'s personalised health score.',
-                textAlign: TextAlign.center,
-                style: WellxTypography.captionText.copyWith(
-                  color: Colors.white60,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: WellxSpacing.xl),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: WellxSpacing.xl,
-                  vertical: WellxSpacing.md,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      blurRadius: 16,
+                  ),
+                  const SizedBox(height: WellxSpacing.xs),
+                  Text(
+                    'Complete a body scan to unlock\nyour pet\'s personalised wellness score.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: Colors.white.withValues(alpha: 0.7),
+                      height: 1.5,
                     ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.camera_alt_rounded,
-                      size: 18,
-                      color: WellxColors.inkPrimary,
+                  ),
+                  const SizedBox(height: WellxSpacing.xl),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: WellxSpacing.xl,
+                      vertical: WellxSpacing.md,
                     ),
-                    const SizedBox(width: WellxSpacing.sm),
-                    Text(
-                      'Take a Body Photo',
-                      style: WellxTypography.buttonLabel.copyWith(
-                        color: WellxColors.textPrimary,
-                      ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(100),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          blurRadius: 16,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Domain Pillar Card
-// ---------------------------------------------------------------------------
-
-class _DomainPillarCard extends StatelessWidget {
-  final PillarScore pillar;
-  const _DomainPillarCard({required this.pillar});
-
-  @override
-  Widget build(BuildContext context) {
-    return WellxCard(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: _pillarColor(pillar.color).withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _pillarIcon(pillar.name),
-                  size: 13,
-                  color: _pillarColor(pillar.color),
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${pillar.score}',
-                style: WellxTypography.dataNumber.copyWith(
-                  fontSize: 18,
-                  color: WellxColors.scoreColor(pillar.score),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            pillar.name,
-            style: WellxTypography.captionText.copyWith(
-              fontWeight: FontWeight.w600,
-              color: WellxColors.textPrimary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: pillar.percent,
-              minHeight: 4,
-              backgroundColor: WellxColors.border,
-              valueColor: AlwaysStoppedAnimation(
-                WellxColors.scoreColor(pillar.score),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.camera_alt_rounded,
+                          size: 18,
+                          color: WellxColors.primary,
+                        ),
+                        const SizedBox(width: WellxSpacing.sm),
+                        Text(
+                          'Take a Body Photo',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: WellxColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  IconData _pillarIcon(String name) {
-    switch (name) {
-      case 'Organ Strength':
-        return Icons.favorite;
-      case 'Inflammation':
-        return Icons.local_fire_department;
-      case 'Metabolic':
-        return Icons.bolt;
-      case 'Body & Activity':
-        return Icons.directions_walk;
-      case 'Wellness & Dental':
-        return Icons.mood;
-      default:
-        return Icons.circle;
-    }
-  }
-
-  Color _pillarColor(String color) {
-    switch (color) {
-      case 'red':
-        return WellxColors.organStrength;
-      case 'orange':
-        return WellxColors.inflammation;
-      case 'gold':
-        return WellxColors.metabolic;
-      case 'green':
-        return WellxColors.bodyActivity;
-      case 'blue':
-        return WellxColors.wellnessDental;
-      default:
-        return WellxColors.textTertiary;
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Explore Card
-// ---------------------------------------------------------------------------
-
-class _ExploreCard extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ExploreCard({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  State<_ExploreCard> createState() => _ExploreCardState();
-}
-
-class _ExploreCardState extends State<_ExploreCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pressController;
-  late final Animation<double> _scaleAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _pressController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 120),
-      lowerBound: 0.93,
-      upperBound: 1.0,
-    )..value = 1.0;
-    _scaleAnim = _pressController;
-  }
-
-  @override
-  void dispose() {
-    _pressController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _pressController.reverse(),
-      onTapUp: (_) {
-        _pressController.forward();
-        widget.onTap();
-      },
-      onTapCancel: () => _pressController.forward(),
-      child: AnimatedBuilder(
-        animation: _scaleAnim,
-        builder: (_, child) => Transform.scale(
-          scale: _scaleAnim.value,
-          child: child,
-        ),
-        child: WellxCard(
-          padding: const EdgeInsets.symmetric(
-            vertical: WellxSpacing.lg,
-            horizontal: WellxSpacing.md,
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: widget.color.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(widget.icon, color: widget.color, size: 20),
-              ),
-              const SizedBox(height: WellxSpacing.sm),
-              Text(
-                widget.label,
-                style: WellxTypography.captionText.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );

@@ -53,9 +53,9 @@ class _ShimmerCardState extends State<ShimmerCard>
             gradient: LinearGradient(
               begin: Alignment(_animation.value - 1, 0),
               end: Alignment(_animation.value, 0),
-              colors: const [
+              colors: [
                 WellxColors.flatCardFill,
-                WellxColors.border,
+                WellxColors.surfaceContainerHigh,
                 WellxColors.flatCardFill,
               ],
             ),
