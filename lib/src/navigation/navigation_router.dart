@@ -26,6 +26,7 @@ import '../screens/travel/travel_screen.dart';
 import '../screens/ocr/ocr_scan_screen.dart';
 import '../screens/pets/add_pet_screen.dart';
 import '../screens/medications/medications_screen.dart';
+import '../screens/wallet/email_scan_screen.dart';
 
 /// Global navigation key for the router.
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -231,6 +232,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => const MaterialPage(
           fullscreenDialog: true,
           child: OcrScanScreen(),
+        ),
+      ),
+
+      // Email Scan (Smart Sync)
+      GoRoute(
+        path: '/email-scan',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => const MaterialPage(
+          fullscreenDialog: true,
+          child: EmailScanScreen(),
         ),
       ),
 

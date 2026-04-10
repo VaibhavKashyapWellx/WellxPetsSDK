@@ -675,9 +675,7 @@ class _SmartSyncCard extends StatelessWidget {
                 ),
                 const SizedBox(height: WellxSpacing.xl),
                 GestureDetector(
-                  onTap: () {
-                    // TODO: Connect email flow
-                  },
+                  onTap: () => context.push('/email-scan'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 28, vertical: 14,
