@@ -119,17 +119,23 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
 
     final hasMessages = chatState.messages.isNotEmpty || chatState.isLoading;
 
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
     return Scaffold(
       backgroundColor: WellxColors.surface,
+      resizeToAvoidBottomInset: false,
       appBar: _buildAppBar(pet?.name),
       body: Stack(
         children: [
-          // Main content area
-          GestureDetector(
-            onTap: () => _focusNode.unfocus(),
-            child: hasMessages
-                ? _buildMessageList(chatState)
-                : _buildEmptyState(),
+          // Main content area — pad bottom so messages don't hide behind input
+          Positioned.fill(
+            bottom: 80 + keyboardHeight,
+            child: GestureDetector(
+              onTap: () => _focusNode.unfocus(),
+              child: hasMessages
+                  ? _buildMessageList(chatState)
+                  : _buildEmptyState(),
+            ),
           ),
 
           // Error banner
@@ -137,7 +143,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 200,
+              bottom: 200 + keyboardHeight,
               child: _buildErrorBanner(chatState.errorMessage!),
             ),
 
@@ -146,15 +152,15 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 140,
+              bottom: 140 + keyboardHeight,
               child: _buildImagePreview(),
             ),
 
-          // Floating input bar
+          // Floating input bar — moves up with keyboard
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: keyboardHeight,
             child: _buildFloatingInputBar(chatState.isLoading),
           ),
         ],
@@ -191,7 +197,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
               ],
             ),
             child: const Icon(
-              Icons.smart_toy_rounded,
+              Icons.local_hospital_rounded,
               color: Colors.white,
               size: 18,
             ),
@@ -320,7 +326,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
                   color: WellxColors.surfaceContainerHigh,
                 ),
                 child: const Icon(
-                  Icons.smart_toy_rounded,
+                  Icons.local_hospital_rounded,
                   color: WellxColors.primary,
                   size: 38,
                 ),
@@ -548,7 +554,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
             ),
           ),
           child: const Icon(
-            Icons.smart_toy_rounded,
+            Icons.local_hospital_rounded,
             color: Colors.white,
             size: 14,
           ),
@@ -730,7 +736,7 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
               ),
             ),
             child: const Icon(
-              Icons.smart_toy_rounded,
+              Icons.local_hospital_rounded,
               color: Colors.white,
               size: 14,
             ),

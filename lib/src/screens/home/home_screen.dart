@@ -83,13 +83,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final balanceAsync = ref.watch(balanceStreamProvider);
     final balance = balanceAsync.valueOrNull;
 
+    // Calculate score from biomarkers if available, or generate a baseline
+    // from walks/pet data so the score card is always visible for active users.
     final healthScore = biomarkers.isNotEmpty
         ? ScoreCalculator.calculate(
             biomarkers: biomarkers,
             walkSessions: walks,
             pet: selectedPet,
           )
-        : null;
+        : (selectedPet != null
+            ? ScoreCalculator.calculate(
+                biomarkers: const [],
+                walkSessions: walks,
+                pet: selectedPet,
+              )
+            : null);
 
     final isScoreUnlocked = healthScore != null;
     final hasPets = pets.isNotEmpty;

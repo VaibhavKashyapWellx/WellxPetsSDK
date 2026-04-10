@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -11,6 +12,7 @@ import '../../models/bcs_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/pet_provider.dart';
+import '../../providers/vet_chat_provider.dart';
 import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
@@ -840,24 +842,111 @@ class _TrackBCSFlowState extends ConsumerState<TrackBCSFlow>
   }
 
   void _runMockAnalysis() {
-    Future.delayed(const Duration(seconds: 3), () async {
+    _runClaudeVisionAnalysis();
+  }
+
+  Future<void> _runClaudeVisionAnalysis() async {
+    try {
+      final file = _pickedFile;
+      if (file == null) {
+        _fallbackToMockAnalysis();
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final pet = ref.read(selectedPetProvider);
+      final petName = pet?.name ?? 'the pet';
+      final breed = pet?.breed ?? 'Unknown breed';
+
+      final claudeService = ref.read(claudeProxyServiceProvider);
+
+      final response = await claudeService.sendMessageWithVision(
+        messages: [
+          {
+            'role': 'user',
+            'content':
+                'Analyze this photo of $petName ($breed) for Body Condition Score (BCS) on a 1-9 scale. '
+                    'Respond ONLY with valid JSON, no markdown fences:\n'
+                    '{"score":5,"confidence":0.85,"label":"Ideal","summary":"...","observations":["..."],'
+                    '"health_flags":[],"diet_recommendation":"...","species":"Dog","breed":"$breed",'
+                    '"recheck_weeks":4,"view_quality":{"lateral":"good","dorsal":"partial","posterior":"good"}}',
+          },
+        ],
+        imageBase64: base64Image,
+        systemPrompt:
+            'You are a veterinary body condition scoring expert. Evaluate the pet photo '
+            'and return ONLY raw JSON with BCS on a 1-9 scale. Be accurate and helpful.',
+        maxTokens: 1024,
+      );
+
       if (!mounted) return;
-      // Generate mock BCS result
+
+      // Parse Claude's JSON response
+      var cleaned = response.trim();
+      if (cleaned.startsWith('```json')) cleaned = cleaned.substring(7);
+      if (cleaned.startsWith('```')) cleaned = cleaned.substring(3);
+      if (cleaned.endsWith('```')) {
+        cleaned = cleaned.substring(0, cleaned.length - 3);
+      }
+      cleaned = cleaned.trim();
+
+      final json = jsonDecode(cleaned) as Map<String, dynamic>;
+      final score = (json['score'] as num?)?.toInt() ?? 5;
+      final confidence = (json['confidence'] as num?)?.toDouble() ?? 0.85;
+
+      final result = BCSRecord(
+        id: 'bcs_ai_${DateTime.now().millisecondsSinceEpoch}',
+        date: DateTime.now(),
+        score: score,
+        label: json['label'] as String? ?? _labelForScore(score),
+        confidence: confidence,
+        onLineSummary: json['summary'] as String? ?? '',
+        keyObservations: List<String>.from(json['observations'] ?? []),
+        healthFlags: List<String>.from(json['health_flags'] ?? []),
+        dietaryRecommendation: json['diet_recommendation'] as String? ?? '',
+        speciesDetected: json['species'] as String? ?? 'Dog',
+        breedDetected: json['breed'] as String? ?? breed,
+        recheckWeeks: (json['recheck_weeks'] as num?)?.toInt() ?? 4,
+        viewQuality: BCSViewQuality(
+          lateral: (json['view_quality'] as Map?)?['lateral'] as String? ?? 'good',
+          dorsal: (json['view_quality'] as Map?)?['dorsal'] as String? ?? 'partial',
+          posterior: (json['view_quality'] as Map?)?['posterior'] as String? ?? 'good',
+        ),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _result = result;
+        _step = _BCSStep.results;
+      });
+
+      _persistBCSResult(result);
+    } catch (e) {
+      debugPrint('Claude Vision BCS failed: $e — falling back to mock');
+      if (mounted) _fallbackToMockAnalysis();
+    }
+  }
+
+  String _labelForScore(int score) {
+    if (score <= 3) return 'Underweight';
+    if (score <= 5) return 'Ideal';
+    if (score <= 7) return 'Overweight';
+    return 'Obese';
+  }
+
+  void _fallbackToMockAnalysis() {
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
       final rng = Random();
-      final score = 4 + rng.nextInt(3); // 4-6 range for demo
+      final score = 4 + rng.nextInt(3);
       final confidence = 0.82 + rng.nextDouble() * 0.15;
 
       final result = BCSRecord(
         id: 'bcs_mock_${DateTime.now().millisecondsSinceEpoch}',
         date: DateTime.now(),
         score: score,
-        label: score <= 3
-            ? 'Underweight'
-            : score <= 5
-                ? 'Ideal'
-                : score <= 7
-                    ? 'Overweight'
-                    : 'Obese',
+        label: _labelForScore(score),
         confidence: confidence,
         onLineSummary: score <= 5
             ? 'Your pet appears to be in good body condition with appropriate weight distribution.'
@@ -889,7 +978,6 @@ class _TrackBCSFlowState extends ConsumerState<TrackBCSFlow>
         _step = _BCSStep.results;
       });
 
-      // Persist to Supabase (non-fatal fire-and-forget)
       _persistBCSResult(result);
     });
   }
@@ -912,8 +1000,8 @@ class _TrackBCSFlowState extends ConsumerState<TrackBCSFlow>
             photoData: bytes,
             fileName: file.name,
           );
-        } catch (_) {
-          // Photo upload failure is non-fatal
+        } catch (e) {
+          debugPrint('BCS photo upload failed: $e');
         }
       }
 
@@ -925,7 +1013,9 @@ class _TrackBCSFlowState extends ConsumerState<TrackBCSFlow>
         muscleCondition: record.label,
         notes: record.keyObservations.join('; '),
       );
-    } catch (_) {
+      debugPrint('BCS result persisted for ${pet.name}');
+    } catch (e) {
+      debugPrint('BCS save failed: $e');
       // BCS save failure is non-fatal — result is already shown to user
     }
   }
