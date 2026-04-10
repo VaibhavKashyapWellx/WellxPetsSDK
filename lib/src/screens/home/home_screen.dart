@@ -883,116 +883,87 @@ class _LockedScoreCard extends StatelessWidget {
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: Stack(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Decorative blur orbs
-            Positioned(
-              top: -48,
-              right: -48,
-              child: Container(
-                width: 192,
-                height: 192,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: WellxColors.primaryFixedDim.withValues(alpha: 0.20),
-                ),
+            const SizedBox(height: WellxSpacing.xxl),
+            // Lock icon in a glowing circle
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+                boxShadow: [
+                  BoxShadow(
+                    color: WellxColors.primary.withValues(alpha: 0.4),
+                    blurRadius: 24,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.lock_rounded,
+                color: Colors.white,
+                size: 30,
               ),
             ),
-            Positioned(
-              bottom: -32,
-              left: -32,
-              child: Container(
-                width: 128,
-                height: 128,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: WellxColors.secondaryContainer.withValues(alpha: 0.10),
-                ),
+            const SizedBox(height: WellxSpacing.lg),
+            Text(
+              'Health Score Locked',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
               ),
             ),
-            // Content
-            Center(
-              child: Column(
+            const SizedBox(height: WellxSpacing.xs),
+            Text(
+              'Complete a body scan to unlock\nyour pet\'s personalised wellness score.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.white.withValues(alpha: 0.7),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: WellxSpacing.xl),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: WellxSpacing.xl,
+                vertical: WellxSpacing.md,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(100),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    blurRadius: 16,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Lock icon in a glowing circle
-                  Container(
-                    width: 68,
-                    height: 68,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.08),
-                      boxShadow: [
-                        BoxShadow(
-                          color: WellxColors.primary.withValues(alpha: 0.4),
-                          blurRadius: 24,
-                          spreadRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.lock_rounded,
-                      color: Colors.white,
-                      size: 30,
-                    ),
+                  Icon(
+                    Icons.camera_alt_rounded,
+                    size: 18,
+                    color: WellxColors.primary,
                   ),
-                  const SizedBox(height: WellxSpacing.lg),
+                  const SizedBox(width: WellxSpacing.sm),
                   Text(
-                    'Health Score Locked',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: WellxSpacing.xs),
-                  Text(
-                    'Complete a body scan to unlock\nyour pet\'s personalised wellness score.',
-                    textAlign: TextAlign.center,
+                    'Take a Body Photo',
                     style: GoogleFonts.inter(
                       fontSize: 14,
-                      color: Colors.white.withValues(alpha: 0.7),
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: WellxSpacing.xl),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: WellxSpacing.xl,
-                      vertical: WellxSpacing.md,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(100),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          blurRadius: 16,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.camera_alt_rounded,
-                          size: 18,
-                          color: WellxColors.primary,
-                        ),
-                        const SizedBox(width: WellxSpacing.sm),
-                        Text(
-                          'Take a Body Photo',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: WellxColors.primary,
-                          ),
-                        ),
-                      ],
+                      fontWeight: FontWeight.w600,
+                      color: WellxColors.primary,
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: WellxSpacing.xxl),
           ],
         ),
       ),

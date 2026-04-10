@@ -448,11 +448,14 @@ class _FilterRow extends StatelessWidget {
     const filters = ['All', 'Dogs', 'Cats', 'Both'];
     return Row(
       children: [
-        Text(
-          'Shelters in Need',
-          style: WellxTypography.heading,
+        Flexible(
+          child: Text(
+            'Shelters in Need',
+            style: WellxTypography.heading,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-        const Spacer(),
+        const SizedBox(width: 8),
         ...filters.map((f) {
           final isSelected = state.selectedFilter == f;
           return Padding(
