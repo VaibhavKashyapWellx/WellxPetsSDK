@@ -1,11 +1,11 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
-import '../../widgets/wellx_card.dart';
-import '../../widgets/wellx_primary_button.dart';
 import '../../providers/pet_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -135,38 +135,54 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
   Widget build(BuildContext context) {
     final pet = ref.watch(selectedPetProvider);
     final petName = pet?.name ?? 'your pet';
+    // breed kept for potential future use
+    // ignore: unused_local_variable
     final breed = pet?.breed ?? '';
-    final isBreedKnown =
-        breed.isNotEmpty && breed != (pet?.species ?? 'Dog');
 
     // Rebuild questions with actual pet name
     if (_questions.first.question.contains('your pet') && pet != null) {
       _questions = _sampleQuestions(petName);
     }
 
-    final navTitle = isBreedKnown ? '$breed Lifestyle Check' : 'Wellness Check';
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: WellxColors.background,
-      appBar: AppBar(
-        backgroundColor: WellxColors.background,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: WellxColors.textPrimary.withValues(alpha: 0.06),
+      backgroundColor: cs.surface,
+      extendBodyBehindAppBar: true,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: AppBar(
+              backgroundColor: cs.surface.withValues(alpha: 0.7),
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              leading: IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    size: 18, color: cs.primary),
+              ),
+              title: Text(
+                'Wellness Check',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: cs.primary,
+                ),
+              ),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  onPressed: () {},
+                  icon: Icon(Icons.help_outline_rounded,
+                      size: 22, color: cs.primary),
+                ),
+              ],
             ),
-            child: const Icon(Icons.close,
-                size: 14, color: WellxColors.textSecondary),
           ),
         ),
-        title: Text(navTitle),
-        titleTextStyle: WellxTypography.cardTitle,
-        centerTitle: true,
       ),
       body: _showResults
           ? _buildResultsSummary(petName)
@@ -177,34 +193,28 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
   // ---------- Progress Bar ----------
 
   Widget _buildProgressBar() {
-    final question = _questions[_currentIndex];
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: WellxSpacing.xl),
       child: Column(
         children: [
-          Row(
-            children: [
-              Text(
-                question.category.toUpperCase(),
-                style: WellxTypography.sectionLabel.copyWith(
-                  color: question.color,
-                  letterSpacing: 1.2,
-                ),
+          // "Question X of Y" label
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Question ${_currentIndex + 1} of ${_questions.length}',
+              style: WellxTypography.captionText.copyWith(
+                color: cs.onSurfaceVariant,
               ),
-              const Spacer(),
-              Text(
-                '${_currentIndex + 1} of ${_questions.length}',
-                style: WellxTypography.captionText,
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: WellxSpacing.sm),
           ClipRRect(
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(100),
             child: LinearProgressIndicator(
               value: (_currentIndex + 1) / _questions.length,
-              backgroundColor: WellxColors.textPrimary.withValues(alpha: 0.1),
-              color: question.color,
+              backgroundColor: cs.primaryContainer.withValues(alpha: 0.3),
+              color: cs.primary,
               minHeight: 6,
             ),
           ),
@@ -218,7 +228,7 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
   Widget _buildQuestionView() {
     return Column(
       children: [
-        const SizedBox(height: WellxSpacing.sm),
+        SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight + WellxSpacing.md),
         _buildProgressBar(),
         Expanded(
           child: PageView.builder(
@@ -231,7 +241,8 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
             itemBuilder: (context, index) => _buildQuestionPage(index),
           ),
         ),
-        _buildBottomControls(),
+        _buildBottomNav(),
+        const SizedBox(height: 120),
       ],
     );
   }
@@ -239,6 +250,7 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
   Widget _buildQuestionPage(int index) {
     final question = _questions[index];
     final selectedOption = _answers[index];
+    final cs = Theme.of(context).colorScheme;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
@@ -247,40 +259,79 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
       ),
       child: Column(
         children: [
-          // Educational banner
+          // Category pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: question.color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Text(
+              question.category.toUpperCase(),
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: question.color,
+              ),
+            ),
+          ),
+          const SizedBox(height: WellxSpacing.lg),
+
+          // Category icon in circle
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: question.color.withValues(alpha: 0.1),
+            ),
+            child: Icon(question.icon, size: 22, color: question.color),
+          ),
+          const SizedBox(height: WellxSpacing.lg),
+
+          // Question text (Plus Jakarta Sans, xl bold)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: WellxSpacing.lg),
+            child: Text(
+              question.question,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+                color: cs.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: WellxSpacing.lg),
+
+          // Educational context in surfaceContainerLow card
           Container(
             padding: const EdgeInsets.all(14),
             width: double.infinity,
             decoration: BoxDecoration(
-              color: WellxColors.amberWatch.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(14),
+              color: WellxColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Padding(
                   padding: EdgeInsets.only(top: 2),
-                  child: Icon(Icons.lightbulb,
-                      size: 14, color: WellxColors.amberWatch),
+                  child: Icon(Icons.lightbulb_outline_rounded,
+                      size: 16, color: WellxColors.onSurfaceVariant),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Did you know?',
-                        style: WellxTypography.captionText.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: WellxColors.amberWatch,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        question.educationalContext,
-                        style: WellxTypography.captionText,
-                      ),
-                    ],
+                  child: Text(
+                    question.educationalContext,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      height: 1.5,
+                      color: WellxColors.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
@@ -288,30 +339,7 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
           ),
           const SizedBox(height: WellxSpacing.xl),
 
-          // Category icon
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: question.color.withValues(alpha: 0.12),
-            ),
-            child: Icon(question.icon, size: 24, color: question.color),
-          ),
-          const SizedBox(height: WellxSpacing.lg),
-
-          // Question text
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: WellxSpacing.xl),
-            child: Text(
-              question.question,
-              style: WellxTypography.heading.copyWith(fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: WellxSpacing.xl),
-
-          // Options
+          // Answer options — vertical pill-shaped buttons
           ...question.options.asMap().entries.map((entry) {
             final optIndex = entry.key;
             final option = entry.value;
@@ -325,35 +353,73 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
                   onTap: _answers.containsKey(index)
                       ? null
                       : () => _selectOption(index, optIndex),
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
+                  borderRadius: BorderRadius.circular(24),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? question.color.withValues(alpha: 0.08)
-                          : WellxColors.cardSurface,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isSelected
-                            ? question.color
-                            : WellxColors.border,
-                        width: isSelected ? 1.5 : 1,
-                      ),
+                          ? cs.primary
+                          : WellxColors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: cs.primary.withValues(alpha: 0.2),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : WellxColors.subtleShadow,
                     ),
                     child: Row(
                       children: [
+                        // Radio-style indicator
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected
+                                ? Colors.white
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.white
+                                  : WellxColors.outlineVariant,
+                              width: isSelected ? 0 : 1.5,
+                            ),
+                          ),
+                          child: isSelected
+                              ? Center(
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: cs.primary,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             option,
-                            style: WellxTypography.bodyText.copyWith(
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
                               fontWeight: FontWeight.w500,
+                              height: 1.4,
+                              color: isSelected
+                                  ? Colors.white
+                                  : cs.onSurface,
                             ),
                           ),
                         ),
-                        if (isSelected)
-                          Icon(Icons.check_circle,
-                              color: question.color, size: 20),
                       ],
                     ),
                   ),
@@ -372,7 +438,7 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
                 color: selectedOption == 0
                     ? WellxColors.scoreGreen.withValues(alpha: 0.06)
                     : WellxColors.midPurple.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,8 +447,8 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
                     padding: const EdgeInsets.only(top: 2),
                     child: Icon(
                       selectedOption == 0
-                          ? Icons.verified
-                          : Icons.arrow_upward,
+                          ? Icons.verified_rounded
+                          : Icons.arrow_upward_rounded,
                       size: 14,
                       color: selectedOption == 0
                           ? WellxColors.scoreGreen
@@ -431,74 +497,58 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
     });
   }
 
-  // ---------- Bottom Controls ----------
+  // ---------- Bottom Navigation ----------
 
-  Widget _buildBottomControls() {
+  Widget _buildBottomNav() {
+    final cs = Theme.of(context).colorScheme;
+    final hasAnswer = _answers.containsKey(_currentIndex);
+    final isLast = _currentIndex == _questions.length - 1;
+    final buttonLabel = isLast ? 'See Results' : 'Next';
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: WellxSpacing.xl,
-        vertical: WellxSpacing.xl,
+        vertical: WellxSpacing.lg,
       ),
-      child: Row(
-        children: [
-          if (_currentIndex > 0)
-            TextButton.icon(
-              onPressed: () => setState(() {
-                _currentIndex -= 1;
-                _showIdealExplanation = null;
-              }),
-              icon: const Icon(Icons.chevron_left, size: 14),
-              label: const Text('Previous'),
-              style: TextButton.styleFrom(
-                foregroundColor: WellxColors.textPrimary,
-                textStyle: WellxTypography.bodyText
-                    .copyWith(fontWeight: FontWeight.w500),
-              ),
-            )
-          else
-            const SizedBox(width: 80),
-
-          const Spacer(),
-
-          // Dots
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(
-              _questions.length,
-              (i) => Container(
-                width: i == _currentIndex ? 8 : 6,
-                height: i == _currentIndex ? 8 : 6,
-                margin: const EdgeInsets.symmetric(horizontal: 3),
+      child: SizedBox(
+        width: double.infinity,
+        child: AnimatedOpacity(
+          opacity: hasAnswer ? 1.0 : 0.5,
+          duration: const Duration(milliseconds: 200),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: hasAnswer
+                  ? () {
+                      if (isLast) {
+                        setState(() => _showResults = true);
+                      } else {
+                        setState(() {
+                          _currentIndex += 1;
+                          _showIdealExplanation = null;
+                        });
+                      }
+                    }
+                  : null,
+              borderRadius: BorderRadius.circular(100),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: WellxSpacing.lg),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: i == _currentIndex
-                      ? WellxColors.textPrimary
-                      : WellxColors.textPrimary.withValues(alpha: 0.2),
+                  gradient: hasAnswer ? WellxColors.primaryGradient : null,
+                  color: hasAnswer ? null : cs.outline.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  buttonLabel,
+                  style: WellxTypography.buttonLabel.copyWith(
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
           ),
-
-          const Spacer(),
-
-          if (_currentIndex < _questions.length - 1)
-            TextButton.icon(
-              onPressed: () => setState(() {
-                _currentIndex += 1;
-                _showIdealExplanation = null;
-              }),
-              label: const Text('Skip'),
-              icon: const SizedBox.shrink(),
-              iconAlignment: IconAlignment.end,
-              style: TextButton.styleFrom(
-                foregroundColor: WellxColors.textSecondary,
-                textStyle: WellxTypography.bodyText
-                    .copyWith(fontWeight: FontWeight.w500),
-              ),
-            )
-          else
-            const SizedBox(width: 80),
-        ],
+        ),
       ),
     );
   }
@@ -507,136 +557,192 @@ class _TrackWellnessFlowState extends ConsumerState<TrackWellnessFlow> {
 
   Widget _buildResultsSummary(String petName) {
     final overallScore = _computeOverallScore();
+    final cs = Theme.of(context).colorScheme;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(WellxSpacing.xl),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + kToolbarHeight + WellxSpacing.lg,
+        left: WellxSpacing.xl,
+        right: WellxSpacing.xl,
+        bottom: 120,
+      ),
       child: Column(
         children: [
-          const SizedBox(height: WellxSpacing.xl),
-
-          // Score ring
-          SizedBox(
-            width: 100,
-            height: 100,
-            child: Stack(
-              alignment: Alignment.center,
+          // Purple gradient hero card with score
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              vertical: WellxSpacing.xxl,
+              horizontal: WellxSpacing.xl,
+            ),
+            decoration: BoxDecoration(
+              gradient: WellxColors.primaryGradient,
+              borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+              boxShadow: [
+                BoxShadow(
+                  color: cs.primary.withValues(alpha: 0.25),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
               children: [
-                CircularProgressIndicator(
-                  value: 1.0,
-                  strokeWidth: 8,
-                  color: WellxColors.textPrimary.withValues(alpha: 0.08),
-                  backgroundColor: Colors.transparent,
+                Text(
+                  'Wellness Check Complete',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ),
                 ),
-                CircularProgressIndicator(
-                  value: overallScore / 100.0,
-                  strokeWidth: 8,
-                  color: overallScore >= 70
-                      ? WellxColors.scoreGreen
-                      : WellxColors.amberWatch,
-                  backgroundColor: Colors.transparent,
-                  strokeCap: StrokeCap.round,
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
+                const SizedBox(height: WellxSpacing.lg),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(
                       '$overallScore',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: WellxColors.textPrimary,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 64,
+                        fontWeight: FontWeight.w800,
+                        height: 1.0,
+                        color: Colors.white,
                       ),
                     ),
-                    Text('/ 100', style: WellxTypography.captionText),
+                    const SizedBox(width: 4),
+                    Text(
+                      '/100',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
+                    ),
                   ],
+                ),
+                const SizedBox(height: WellxSpacing.sm),
+                Text(
+                  overallScore >= 80
+                      ? '$petName is doing great!'
+                      : overallScore >= 60
+                          ? 'Some areas could use attention'
+                          : 'A few areas need improvement',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: WellxSpacing.xl),
 
-          Text('Wellness Check Complete',
-              style: WellxTypography.heading),
-          const SizedBox(height: 6),
-          Text(
-            overallScore >= 80
-                ? '$petName is doing great!'
-                : overallScore >= 60
-                    ? 'Some areas could use attention'
-                    : 'A few areas need improvement',
-            style: WellxTypography.captionText,
-          ),
+          // Per-category breakdown cards
+          ..._questions.asMap().entries.map((entry) {
+            final i = entry.key;
+            final q = entry.value;
+            final answer = _answers[i];
+            final score = answer != null
+                ? [100, 70, 40, 10][answer.clamp(0, 3)]
+                : 50;
+            final scoreColor = score >= 70
+                ? WellxColors.scoreGreen
+                : score >= 40
+                    ? WellxColors.amberWatch
+                    : WellxColors.coral;
 
-          const SizedBox(height: WellxSpacing.xxl),
-
-          // Per-category breakdown
-          WellxCard(
-            child: Column(
-              children: _questions.asMap().entries.map((entry) {
-                final i = entry.key;
-                final q = entry.value;
-                final answer = _answers[i];
-                final score = answer != null
-                    ? [100, 70, 40, 10][answer.clamp(0, 3)]
-                    : 50;
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 90,
-                        child: Text(
-                          q.category,
-                          style: WellxTypography.chipText,
-                        ),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: WellxColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+                  boxShadow: WellxColors.subtleShadow,
+                ),
+                child: Row(
+                  children: [
+                    // Category icon
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: q.color.withValues(alpha: 0.1),
                       ),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: score / 100.0,
-                            backgroundColor:
-                                WellxColors.textPrimary.withValues(alpha: 0.06),
-                            color: score >= 70
-                                ? WellxColors.scoreGreen
-                                : score >= 40
-                                    ? WellxColors.amberWatch
-                                    : WellxColors.coral,
-                            minHeight: 8,
+                      child: Icon(q.icon, size: 18, color: q.color),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            q.category,
+                            style: WellxTypography.chipText.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: WellxSpacing.md),
-                      SizedBox(
-                        width: 30,
-                        child: Text(
-                          '$score',
-                          textAlign: TextAlign.end,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: score >= 70
-                                ? WellxColors.scoreGreen
-                                : score >= 40
-                                    ? WellxColors.amberWatch
-                                    : WellxColors.coral,
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(100),
+                            child: LinearProgressIndicator(
+                              value: score / 100.0,
+                              backgroundColor:
+                                  cs.onSurface.withValues(alpha: 0.06),
+                              color: scoreColor,
+                              minHeight: 6,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '$score',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: scoreColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+
+          const SizedBox(height: WellxSpacing.xl),
+
+          // Done pill button
+          SizedBox(
+            width: double.infinity,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => Navigator.of(context).pop(),
+                borderRadius: BorderRadius.circular(100),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: WellxSpacing.lg),
+                  decoration: BoxDecoration(
+                    gradient: WellxColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(100),
                   ),
-                );
-              }).toList(),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Done',
+                    style: WellxTypography.buttonLabel.copyWith(
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: WellxSpacing.xxl),
-
-          WellxPrimaryButton(
-            label: 'Done',
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          const SizedBox(height: WellxSpacing.xl),
         ],
       ),
     );

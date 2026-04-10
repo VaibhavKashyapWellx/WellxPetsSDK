@@ -1,15 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../theme/wellx_colors.dart';
 import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
 import '../../widgets/wellx_card.dart';
-import '../../widgets/wellx_primary_button.dart';
 
 // ---------------------------------------------------------------------------
 // Urine Parameter Result
@@ -49,32 +50,41 @@ class TrackUrineFlow extends ConsumerStatefulWidget {
 }
 
 class _TrackUrineFlowState extends ConsumerState<TrackUrineFlow>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   _UrineStep _step = _UrineStep.instructions;
   final _picker = ImagePicker();
   String? _imagePath;
   String? _error;
   List<_UrineParameter>? _results;
 
-  // Processing animation
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnim;
+  // Scanning line animation
+  late AnimationController _scanLineController;
+  late Animation<double> _scanLineAnim;
+
+  // Observation stagger animation
+  late AnimationController _observationController;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
+    _scanLineController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+    _scanLineAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _scanLineController, curve: Curves.easeInOut),
     );
+
+    _observationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat();
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _scanLineController.dispose();
+    _observationController.dispose();
     super.dispose();
   }
 
@@ -82,26 +92,6 @@ class _TrackUrineFlowState extends ConsumerState<TrackUrineFlow>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: WellxColors.background,
-      appBar: AppBar(
-        backgroundColor: WellxColors.background,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: WellxColors.textPrimary.withValues(alpha: 0.06),
-            ),
-            child: const Icon(Icons.close,
-                size: 14, color: WellxColors.textSecondary),
-          ),
-        ),
-        title: const Text('Urine Screening'),
-        titleTextStyle: WellxTypography.cardTitle,
-        centerTitle: true,
-      ),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 400),
         child: _buildCurrentStep(),
@@ -122,265 +112,330 @@ class _TrackUrineFlowState extends ConsumerState<TrackUrineFlow>
     }
   }
 
-  // ---------- Step 1: Instructions ----------
+  // ==========================================================================
+  // STEP 1 — Instructions Screen
+  // ==========================================================================
 
   Widget _buildInstructionsStep() {
-    return SingleChildScrollView(
+    return Scaffold(
       key: const ValueKey('instructions'),
-      padding: const EdgeInsets.all(WellxSpacing.xl),
-      child: Column(
-        children: [
-          // Intro card
-          WellxCard(
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: WellxColors.scoreBlue.withValues(alpha: 0.12),
-                  ),
-                  child: const Icon(Icons.water_drop,
-                      size: 22, color: WellxColors.scoreBlue),
-                ),
-                const SizedBox(width: WellxSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('At-Home Urine Screening',
-                          style: WellxTypography.cardTitle.copyWith(
-                              fontSize: 16, color: WellxColors.deepPurple)),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Screen for early signs of kidney, liver, and metabolic issues.',
-                        style: WellxTypography.captionText,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+      backgroundColor: WellxColors.background,
+      appBar: AppBar(
+        backgroundColor: WellxColors.background,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back, color: WellxColors.primary),
+        ),
+        title: Text(
+          'Urine Screening',
+          style:
+              WellxTypography.cardTitle.copyWith(color: WellxColors.primary),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.help_outline, color: WellxColors.primary),
           ),
-          const SizedBox(height: WellxSpacing.xl),
-
-          // How It Works
-          WellxCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('How It Works',
-                    style: WellxTypography.chipText
-                        .copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: WellxSpacing.md),
-                _instructionRow(1, Icons.water_drop,
-                    'Dip the urine test strip per manufacturer instructions'),
-                const SizedBox(height: 10),
-                _instructionRow(
-                    2, Icons.timer, 'Wait the recommended time (usually 60 seconds)'),
-                const SizedBox(height: 10),
-                _instructionRow(3, Icons.camera_alt,
-                    'Place strip on a white surface and take a photo'),
-                const SizedBox(height: 10),
-                _instructionRow(4, Icons.auto_awesome,
-                    'AI analyzes the color pads and returns results'),
-              ],
-            ),
-          ),
-          const SizedBox(height: WellxSpacing.xl),
-
-          // Parameters analyzed
-          _buildParametersCard(),
-
-          const SizedBox(height: WellxSpacing.xxl),
-
-          WellxPrimaryButton(
-            label: 'Scan My Strip',
-            icon: Icons.camera_alt,
-            onPressed: () => setState(() => _step = _UrineStep.capture),
-          ),
-          const SizedBox(height: WellxSpacing.xl),
         ],
       ),
-    );
-  }
-
-  Widget _instructionRow(int step, IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: WellxColors.scoreBlue.withValues(alpha: 0.12),
-          ),
-          child: Icon(icon, size: 12, color: WellxColors.scoreBlue),
-        ),
-        const SizedBox(width: WellxSpacing.md),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(text, style: WellxTypography.captionText),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildParametersCard() {
-    final parameters = [
-      ('pH', Icons.scale, WellxColors.scoreBlue),
-      ('Protein', Icons.science, WellxColors.scoreOrange),
-      ('Glucose', Icons.water_drop, WellxColors.amberWatch),
-      ('Ketones', Icons.local_fire_department, WellxColors.scoreRed),
-      ('Bilirubin', Icons.health_and_safety, WellxColors.scoreOrange),
-      ('Blood', Icons.bloodtype, WellxColors.scoreRed),
-      ('Specific Gravity', Icons.speed, WellxColors.scoreGreen),
-      ('Leukocytes', Icons.bubble_chart, WellxColors.deepPurple),
-    ];
-
-    return WellxCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
         children: [
-          Text('Parameters Analyzed',
-              style: WellxTypography.chipText
-                  .copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: WellxSpacing.md),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 3.5,
-            children: parameters.map((p) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: WellxColors.background,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    Icon(p.$2, size: 14, color: p.$3),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        p.$1,
-                        style: WellxTypography.captionText
-                            .copyWith(fontWeight: FontWeight.w500,
-                                color: WellxColors.textPrimary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text('--',
-                        style: WellxTypography.captionText
-                            .copyWith(color: WellxColors.textTertiary)),
-                  ],
-                ),
-              );
-            }).toList(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: WellxSpacing.xl),
+              child: Column(
+                children: [
+                  const SizedBox(height: WellxSpacing.lg),
+
+                  // Hero card with strip example placeholder
+                  _buildHeroCard(),
+
+                  const SizedBox(height: WellxSpacing.xl),
+
+                  // Numbered instruction steps
+                  _buildInstructionCard(
+                    number: 1,
+                    title: 'Dip Strip in Sample',
+                    description:
+                        'Dip strip in fresh sample for 2 seconds.',
+                  ),
+                  const SizedBox(height: WellxSpacing.md),
+                  _buildInstructionCard(
+                    number: 2,
+                    title: 'Wait for Colors',
+                    description:
+                        'Wait 60 seconds for colors to develop.',
+                  ),
+                  const SizedBox(height: WellxSpacing.md),
+                  _buildInstructionCard(
+                    number: 3,
+                    title: 'Place on White Surface',
+                    description:
+                        'Place strip on white paper/surface.',
+                  ),
+                  const SizedBox(height: WellxSpacing.md),
+                  _buildInstructionCard(
+                    number: 4,
+                    title: 'Capture from Above',
+                    description:
+                        'Take a clear photo from directly above.',
+                  ),
+
+                  const SizedBox(height: 120),
+                ],
+              ),
+            ),
+          ),
+
+          // Fixed bottom pill button
+          _buildFixedBottomButton(
+            label: 'Start Scan',
+            icon: Icons.shutter_speed,
+            onTap: () => setState(() => _step = _UrineStep.capture),
           ),
         ],
       ),
     );
   }
 
-  // ---------- Step 2: Camera Capture ----------
-
-  Widget _buildCaptureStep() {
-    return SingleChildScrollView(
-      key: const ValueKey('capture'),
+  Widget _buildHeroCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: WellxColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+        boxShadow: WellxColors.tonalShadow,
+      ),
       padding: const EdgeInsets.all(WellxSpacing.xl),
       child: Column(
         children: [
-          // Preview
+          // Image placeholder showing urine strip example
           Container(
-            height: 200,
+            height: 140,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: WellxColors.inkPrimary,
+              color: WellxColors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: _imagePath != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.asset(
-                      _imagePath!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, e, st) => _capturePlaceholder(),
-                    ),
-                  )
-                : _capturePlaceholder(),
-          ),
-          const SizedBox(height: WellxSpacing.xl),
-
-          Row(
-            children: [
-              Expanded(
-                child: WellxPrimaryButton(
-                  label: 'Take Photo',
-                  icon: Icons.camera_alt,
-                  onPressed: () => _pickImage(ImageSource.camera),
-                ),
-              ),
-              const SizedBox(width: WellxSpacing.md),
-              Expanded(
-                child: WellxSecondaryButton(
-                  label: 'From Library',
-                  icon: Icons.photo_library,
-                  onPressed: () => _pickImage(ImageSource.gallery),
-                ),
-              ),
-            ],
-          ),
-
-          if (_error != null) ...[
-            const SizedBox(height: WellxSpacing.lg),
-            WellxCard(
-              borderColor: WellxColors.coral,
-              child: Row(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline,
-                      color: WellxColors.coral, size: 20),
-                  const SizedBox(width: WellxSpacing.sm),
-                  Expanded(
-                    child: Text(_error!,
-                        style: WellxTypography.captionText
-                            .copyWith(color: WellxColors.coral)),
+                  Icon(
+                    Icons.science_outlined,
+                    size: 48,
+                    color: WellxColors.outline.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(height: WellxSpacing.sm),
+                  Text(
+                    'Urine Strip Example',
+                    style: WellxTypography.captionText.copyWith(
+                      color: WellxColors.outline,
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-
+          ),
           const SizedBox(height: WellxSpacing.xl),
 
-          // Tip card
-          WellxCard(
-            backgroundColor: WellxColors.scoreBlue.withValues(alpha: 0.04),
-            borderColor: WellxColors.scoreBlue.withValues(alpha: 0.15),
-            child: Row(
+          // Heading
+          Text(
+            'Scan Your Strip',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: WellxColors.onSurface,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: WellxSpacing.sm),
+          Text(
+            'Place the urine test strip on a flat white surface for accurate readings.',
+            style: WellxTypography.captionText,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructionCard({
+    required int number,
+    required String title,
+    required String description,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(WellxSpacing.lg),
+      decoration: BoxDecoration(
+        color: WellxColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: WellxColors.primaryContainer,
+            ),
+            child: Center(
+              child: Text(
+                '$number',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: WellxColors.onPrimaryContainer,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: WellxSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline,
-                    size: 16, color: WellxColors.scoreBlue),
-                const SizedBox(width: WellxSpacing.sm),
-                Expanded(
-                  child: Text(
-                    'Place the strip on a white surface for the clearest reading.',
-                    style: WellxTypography.captionText
-                        .copyWith(color: WellxColors.scoreBlue),
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: WellxColors.onSurface,
                   ),
                 ),
+                const SizedBox(height: 2),
+                Text(description, style: WellxTypography.captionText),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ==========================================================================
+  // STEP 2 — Camera Capture
+  // ==========================================================================
+
+  Widget _buildCaptureStep() {
+    return Scaffold(
+      key: const ValueKey('capture'),
+      backgroundColor: WellxColors.background,
+      appBar: AppBar(
+        backgroundColor: WellxColors.background,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () =>
+              setState(() => _step = _UrineStep.instructions),
+          icon: const Icon(Icons.arrow_back, color: WellxColors.primary),
+        ),
+        title: Text(
+          'Capture Strip',
+          style:
+              WellxTypography.cardTitle.copyWith(color: WellxColors.primary),
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(WellxSpacing.xl),
+        child: Column(
+          children: [
+            // Preview area
+            Container(
+              height: 280,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: WellxColors.inkPrimary,
+                borderRadius:
+                    BorderRadius.circular(WellxSpacing.cardRadius),
+              ),
+              child: _imagePath != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                          WellxSpacing.cardRadius),
+                      child: Image.file(
+                        File(_imagePath!),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, e, st) =>
+                            _capturePlaceholder(),
+                      ),
+                    )
+                  : _capturePlaceholder(),
+            ),
+            const SizedBox(height: WellxSpacing.xl),
+
+            // Camera / gallery pill buttons
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPillActionButton(
+                    label: 'Take Photo',
+                    icon: Icons.camera_alt,
+                    filled: true,
+                    onTap: () => _pickImage(ImageSource.camera),
+                  ),
+                ),
+                const SizedBox(width: WellxSpacing.md),
+                Expanded(
+                  child: _buildPillActionButton(
+                    label: 'From Library',
+                    icon: Icons.photo_library,
+                    filled: false,
+                    onTap: () => _pickImage(ImageSource.gallery),
+                  ),
+                ),
+              ],
+            ),
+
+            if (_error != null) ...[
+              const SizedBox(height: WellxSpacing.lg),
+              WellxCard(
+                borderColor: WellxColors.coral,
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: WellxColors.coral, size: 20),
+                    const SizedBox(width: WellxSpacing.sm),
+                    Expanded(
+                      child: Text(_error!,
+                          style: WellxTypography.captionText
+                              .copyWith(color: WellxColors.coral)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: WellxSpacing.xl),
+
+            // Tip card
+            WellxCard(
+              backgroundColor:
+                  WellxColors.scoreBlue.withValues(alpha: 0.04),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline,
+                      size: 16, color: WellxColors.scoreBlue),
+                  const SizedBox(width: WellxSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Place the strip on a white surface for the clearest reading.',
+                      style: WellxTypography.captionText
+                          .copyWith(color: WellxColors.scoreBlue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 120),
+          ],
+        ),
       ),
     );
   }
@@ -390,20 +445,34 @@ class _TrackUrineFlowState extends ConsumerState<TrackUrineFlow>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          width: 56,
-          height: 56,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.15),
+            color: Colors.white.withValues(alpha: 0.18),
           ),
           child: const Icon(Icons.qr_code_scanner,
-              size: 24, color: Colors.white),
+              size: 32, color: Colors.white),
         ),
-        const SizedBox(height: WellxSpacing.md),
+        const SizedBox(height: WellxSpacing.lg),
         const Text(
           'Scan Your Test Strip',
           style: TextStyle(
-              fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white),
+        ),
+        const SizedBox(height: WellxSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Place strip on a white surface and capture from above.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+            textAlign: TextAlign.center,
+          ),
         ),
       ],
     );
@@ -411,7 +480,8 @@ class _TrackUrineFlowState extends ConsumerState<TrackUrineFlow>
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final xFile = await _picker.pickImage(source: source, imageQuality: 85);
+      final xFile =
+          await _picker.pickImage(source: source, imageQuality: 85);
       if (xFile == null) return;
       setState(() {
         _imagePath = xFile.path;
@@ -420,70 +490,261 @@ class _TrackUrineFlowState extends ConsumerState<TrackUrineFlow>
       });
       _runMockAnalysis();
     } catch (e) {
-      setState(() => _error = 'Failed to capture image. Please try again.');
+      setState(
+          () => _error = 'Failed to capture image. Please try again.');
     }
   }
 
-  // ---------- Step 3: Processing ----------
+  // ==========================================================================
+  // STEP 3 — AI Processing
+  // ==========================================================================
 
   Widget _buildProcessingStep() {
-    return Center(
+    final observations = [
+      ('Calibrating color channels...', Icons.tune),
+      ('Measuring pH levels...', Icons.scale),
+      ('Analyzing protein markers...', Icons.science),
+    ];
+
+    return Scaffold(
       key: const ValueKey('processing'),
-      child: Padding(
-        padding: const EdgeInsets.all(WellxSpacing.xl),
-        child: WellxCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: WellxSpacing.xl),
-              AnimatedBuilder(
-                animation: _pulseAnim,
+      backgroundColor: WellxColors.background,
+      appBar: AppBar(
+        backgroundColor: WellxColors.background,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () {
+            setState(() {
+              _step = _UrineStep.capture;
+              _imagePath = null;
+            });
+          },
+          icon: const Icon(Icons.arrow_back, color: WellxColors.primary),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: WellxSpacing.xl),
+        child: Column(
+          children: [
+            const SizedBox(height: WellxSpacing.lg),
+
+            // Heading
+            Text(
+              'Analyzing Strip...',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 30,
+                fontWeight: FontWeight.w800,
+                color: WellxColors.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: WellxSpacing.sm),
+            Text(
+              'Color calibration and chemical analysis in progress...',
+              style: WellxTypography.captionText,
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: WellxSpacing.xxl),
+
+            // Main visual: Photo with scanning overlay
+            _buildScanningVisual(),
+
+            const SizedBox(height: WellxSpacing.lg),
+
+            // "Precision Analysis Active" pill
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: WellxColors.scoreGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: WellxColors.scoreGreen,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Precision Analysis Active',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: WellxColors.scoreGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: WellxSpacing.xl),
+
+            // Live observations
+            ...observations.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final obs = entry.value;
+              return AnimatedBuilder(
+                animation: _observationController,
+                builder: (context, child) {
+                  final phase =
+                      (_observationController.value * 3 - idx).clamp(0.0, 1.0);
+                  return Opacity(
+                    opacity: 0.4 + 0.6 * phase,
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                          bottom: WellxSpacing.md),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              value: null,
+                              color: WellxColors.primary
+                                  .withValues(alpha: phase),
+                            ),
+                          ),
+                          const SizedBox(width: WellxSpacing.md),
+                          Icon(obs.$2,
+                              size: 16,
+                              color: WellxColors.primary
+                                  .withValues(alpha: 0.6)),
+                          const SizedBox(width: WellxSpacing.sm),
+                          Text(
+                            obs.$1,
+                            style: WellxTypography.captionText.copyWith(
+                              color: WellxColors.onSurface
+                                  .withValues(alpha: 0.5 + 0.5 * phase),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            }),
+
+            const SizedBox(height: WellxSpacing.xl),
+
+            // Tip card about AI accuracy
+            WellxCard(
+              backgroundColor:
+                  WellxColors.primary.withValues(alpha: 0.04),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.auto_awesome,
+                      size: 16, color: WellxColors.primary),
+                  const SizedBox(width: WellxSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'AI color-matching uses calibrated reference values for veterinary-grade accuracy.',
+                      style: WellxTypography.captionText
+                          .copyWith(color: WellxColors.primary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 120),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScanningVisual() {
+    return Container(
+      height: 220,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+        color: WellxColors.inkPrimary,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+        child: Stack(
+          children: [
+            // Photo or placeholder
+            if (_imagePath != null)
+              Positioned.fill(
+                child: Image.file(
+                  File(_imagePath!),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, e, st) => const SizedBox.shrink(),
+                ),
+              ),
+
+            // Primary tint overlay
+            Positioned.fill(
+              child: Container(
+                color: WellxColors.primary.withValues(alpha: 0.25),
+              ),
+            ),
+
+            // Scanning line
+            AnimatedBuilder(
+              animation: _scanLineAnim,
+              builder: (context, child) {
+                return Positioned(
+                  top: _scanLineAnim.value * 220,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    height: 2,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          WellxColors.primary.withValues(alpha: 0.8),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // Center scanning icon
+            Center(
+              child: AnimatedBuilder(
+                animation: _scanLineController,
                 builder: (context, child) {
                   return Opacity(
-                    opacity: _pulseAnim.value,
+                    opacity:
+                        0.6 + 0.4 * _scanLineAnim.value,
                     child: Container(
-                      width: 100,
-                      height: 100,
+                      width: 64,
+                      height: 64,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: WellxColors.scoreBlue.withValues(alpha: 0.12),
+                        color: Colors.white.withValues(alpha: 0.15),
                       ),
-                      child: const Icon(Icons.water_drop,
-                          size: 44, color: WellxColors.scoreBlue),
+                      child: const Icon(
+                        Icons.water_drop,
+                        size: 28,
+                        color: Colors.white,
+                      ),
                     ),
                   );
                 },
               ),
-              const SizedBox(height: WellxSpacing.xl),
-              Text('Analyzing urine strip...',
-                  style: WellxTypography.heading
-                      .copyWith(color: WellxColors.scoreBlue)),
-              const SizedBox(height: WellxSpacing.sm),
-              Text(
-                'Reading color pads and comparing to reference values.',
-                style: WellxTypography.captionText,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: WellxSpacing.xl),
-              const LinearProgressIndicator(
-                color: WellxColors.scoreBlue,
-                backgroundColor: WellxColors.border,
-              ),
-              const SizedBox(height: WellxSpacing.xl),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _step = _UrineStep.capture;
-                    _imagePath = null;
-                  });
-                },
-                child: Text('Cancel',
-                    style: WellxTypography.captionText
-                        .copyWith(color: WellxColors.textSecondary)),
-              ),
-              const SizedBox(height: WellxSpacing.lg),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -558,176 +819,437 @@ class _TrackUrineFlowState extends ConsumerState<TrackUrineFlow>
     });
   }
 
-  // ---------- Step 4: Results ----------
+  // ==========================================================================
+  // STEP 4 — Results
+  // ==========================================================================
 
   Widget _buildResultsStep() {
     final results = _results;
     if (results == null) return const SizedBox.shrink();
 
-    final normalCount = results.where((r) => r.status == 'normal').length;
+    final normalCount =
+        results.where((r) => r.status == 'normal').length;
     final borderlineCount =
         results.where((r) => r.status == 'borderline').length;
-    final abnormalCount = results.where((r) => r.status == 'abnormal').length;
+    final abnormalCount =
+        results.where((r) => r.status == 'abnormal').length;
 
-    return SingleChildScrollView(
+    final overallStatus = abnormalCount > 0
+        ? 'Abnormal'
+        : borderlineCount > 0
+            ? 'Borderline'
+            : 'Normal';
+
+    final conditionLabel = abnormalCount > 0
+        ? 'Needs Veterinary Review'
+        : borderlineCount > 0
+            ? 'Monitor Closely'
+            : 'All Clear';
+
+    return Scaffold(
       key: const ValueKey('results'),
-      padding: const EdgeInsets.all(WellxSpacing.xl),
-      child: Column(
-        children: [
-          // Summary card
-          WellxCard(
-            child: Column(
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: abnormalCount > 0
-                        ? WellxColors.coral.withValues(alpha: 0.12)
-                        : borderlineCount > 0
-                            ? WellxColors.amberWatch.withValues(alpha: 0.12)
-                            : WellxColors.scoreGreen.withValues(alpha: 0.12),
-                  ),
-                  child: Icon(
-                    abnormalCount > 0
-                        ? Icons.warning_amber
-                        : borderlineCount > 0
-                            ? Icons.info_outline
-                            : Icons.check_circle,
-                    size: 28,
-                    color: abnormalCount > 0
-                        ? WellxColors.coral
-                        : borderlineCount > 0
-                            ? WellxColors.amberWatch
-                            : WellxColors.scoreGreen,
-                  ),
+      backgroundColor: WellxColors.background,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(
+          left: WellxSpacing.xl,
+          right: WellxSpacing.xl,
+          bottom: 120,
+        ),
+        child: Column(
+          children: [
+            // Purple gradient hero
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 0),
+              padding: const EdgeInsets.fromLTRB(
+                WellxSpacing.xl,
+                60,
+                WellxSpacing.xl,
+                WellxSpacing.xxl,
+              ),
+              decoration: BoxDecoration(
+                gradient: WellxColors.primaryGradient,
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(WellxSpacing.heroRadius),
                 ),
-                const SizedBox(height: WellxSpacing.md),
-                Text(
-                  abnormalCount > 0
-                      ? 'Some Results Need Attention'
-                      : borderlineCount > 0
-                          ? 'Mostly Normal'
-                          : 'All Parameters Normal',
-                  style: WellxTypography.heading,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$normalCount normal, $borderlineCount borderline, $abnormalCount abnormal',
-                  style: WellxTypography.captionText,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: WellxSpacing.lg),
-
-          // Individual parameter results
-          WellxCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Detailed Results',
-                    style: WellxTypography.chipText
-                        .copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: WellxSpacing.md),
-                ...results.map(
-                  (param) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    // Back button row
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: _statusColor(param.status)
-                                .withValues(alpha: 0.12),
+                            color:
+                                Colors.white.withValues(alpha: 0.15),
                           ),
-                          child: Icon(param.icon,
-                              size: 14, color: _statusColor(param.status)),
+                          child: const Icon(Icons.close,
+                              size: 18, color: Colors.white),
                         ),
-                        const SizedBox(width: WellxSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(param.name,
-                                  style: WellxTypography.chipText
-                                      .copyWith(fontWeight: FontWeight.w600)),
-                              Text(param.value,
-                                  style: WellxTypography.captionText),
-                            ],
-                          ),
+                      ),
+                    ),
+                    const SizedBox(height: WellxSpacing.xl),
+
+                    // "SCREENING COMPLETE" label
+                    Text(
+                      'SCREENING COMPLETE',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(height: WellxSpacing.md),
+
+                    // Overall status
+                    Text(
+                      overallStatus,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: WellxSpacing.md),
+
+                    // Condition pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text(
+                        conditionLabel,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _statusColor(param.status)
-                                .withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            param.status[0].toUpperCase() +
-                                param.status.substring(1),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: _statusColor(param.status),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
+                    ),
+                    const SizedBox(height: WellxSpacing.sm),
+                    Text(
+                      '$normalCount normal \u00B7 $borderlineCount borderline \u00B7 $abnormalCount abnormal',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: WellxSpacing.xl),
+
+            // Parameter cards list
+            ...results.map((param) => _buildParameterResultCard(param)),
+
+            const SizedBox(height: WellxSpacing.xl),
+
+            // Recommended Next Steps
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding:
+                    const EdgeInsets.only(left: 4, bottom: WellxSpacing.md),
+                child: Text(
+                  'RECOMMENDED NEXT STEPS',
+                  style: WellxTypography.sectionLabel,
+                ),
+              ),
+            ),
+
+            // "Share with Vet" full-width purple pill
+            SizedBox(
+              width: double.infinity,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: WellxColors.primary,
+                  borderRadius: BorderRadius.circular(100),
+                  boxShadow: [
+                    BoxShadow(
+                      color: WellxColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {},
+                    borderRadius: BorderRadius.circular(100),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: WellxSpacing.lg,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.share,
+                              color: Colors.white, size: 18),
+                          const SizedBox(width: WellxSpacing.sm),
+                          Text('Share with Vet',
+                              style: WellxTypography.buttonLabel),
+                        ],
+                      ),
                     ),
                   ),
                 ),
+              ),
+            ),
+            const SizedBox(height: WellxSpacing.md),
+
+            // Half-width buttons row
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPillActionButton(
+                    label: 'Schedule Follow-up',
+                    icon: Icons.calendar_today,
+                    filled: false,
+                    onTap: () {},
+                  ),
+                ),
+                const SizedBox(width: WellxSpacing.md),
+                Expanded(
+                  child: _buildPillActionButton(
+                    label: 'Save Results',
+                    icon: Icons.save_alt,
+                    filled: false,
+                    onTap: () {},
+                  ),
+                ),
               ],
             ),
-          ),
-          const SizedBox(height: WellxSpacing.xl),
 
-          // Disclaimer
-          WellxCard(
-            backgroundColor: WellxColors.scoreBlue.withValues(alpha: 0.04),
-            borderColor: WellxColors.scoreBlue.withValues(alpha: 0.15),
+            const SizedBox(height: WellxSpacing.xl),
+
+            // Disclaimer
+            WellxCard(
+              backgroundColor:
+                  WellxColors.scoreBlue.withValues(alpha: 0.04),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline,
+                      size: 16, color: WellxColors.scoreBlue),
+                  const SizedBox(width: WellxSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'These results are for screening purposes only. Always consult your veterinarian for medical advice.',
+                      style: WellxTypography.captionText
+                          .copyWith(color: WellxColors.scoreBlue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildParameterResultCard(_UrineParameter param) {
+    final statusColor = _statusColor(param.status);
+    final statusBgColor = _statusBgColor(param.status);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: WellxSpacing.md),
+      child: Container(
+        padding: const EdgeInsets.all(WellxSpacing.lg),
+        decoration: BoxDecoration(
+          color: WellxColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+          boxShadow: WellxColors.subtleShadow,
+        ),
+        child: Row(
+          children: [
+            // Icon in colored circle
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: statusColor.withValues(alpha: 0.12),
+              ),
+              child: Icon(param.icon, size: 18, color: statusColor),
+            ),
+            const SizedBox(width: WellxSpacing.md),
+
+            // Name + value
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    param.name,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: WellxColors.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(param.value,
+                      style: WellxTypography.captionText),
+                ],
+              ),
+            ),
+
+            // Status pill
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusBgColor,
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Text(
+                param.status[0].toUpperCase() +
+                    param.status.substring(1),
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: statusColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================================
+  // Shared Helpers
+  // ==========================================================================
+
+  Widget _buildFixedBottomButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        WellxSpacing.xl,
+        WellxSpacing.lg,
+        WellxSpacing.xl,
+        WellxSpacing.xxl,
+      ),
+      decoration: BoxDecoration(
+        color: WellxColors.background,
+        boxShadow: [
+          BoxShadow(
+            color: WellxColors.primary.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Container(
+          decoration: BoxDecoration(
+            color: WellxColors.primary,
+            borderRadius: BorderRadius.circular(100),
+            boxShadow: [
+              BoxShadow(
+                color: WellxColors.primary.withValues(alpha: 0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(100),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: WellxSpacing.lg,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: Colors.white, size: 20),
+                    const SizedBox(width: WellxSpacing.sm),
+                    Text(label, style: WellxTypography.buttonLabel),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPillActionButton({
+    required String label,
+    required IconData icon,
+    required bool filled,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: filled ? WellxColors.primary : Colors.transparent,
+        borderRadius: BorderRadius.circular(100),
+        border: filled
+            ? null
+            : Border.all(color: WellxColors.primary, width: 1.5),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(100),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: WellxSpacing.md,
+              horizontal: WellxSpacing.lg,
+            ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.info_outline,
-                    size: 16, color: WellxColors.scoreBlue),
+                Icon(
+                  icon,
+                  size: 16,
+                  color:
+                      filled ? Colors.white : WellxColors.primary,
+                ),
                 const SizedBox(width: WellxSpacing.sm),
-                Expanded(
+                Flexible(
                   child: Text(
-                    'These results are for screening purposes only. Always consult your veterinarian for medical advice.',
-                    style: WellxTypography.captionText
-                        .copyWith(color: WellxColors.scoreBlue),
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: filled
+                          ? Colors.white
+                          : WellxColors.primary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: WellxSpacing.xxl),
-
-          WellxPrimaryButton(
-            label: 'Done',
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          const SizedBox(height: WellxSpacing.md),
-          WellxSecondaryButton(
-            label: 'Scan Again',
-            icon: Icons.refresh,
-            onPressed: () {
-              setState(() {
-                _step = _UrineStep.capture;
-                _imagePath = null;
-                _results = null;
-                _error = null;
-              });
-            },
-          ),
-          const SizedBox(height: WellxSpacing.xl),
-        ],
+        ),
       ),
     );
   }
@@ -742,6 +1264,19 @@ class _TrackUrineFlowState extends ConsumerState<TrackUrineFlow>
         return WellxColors.coral;
       default:
         return WellxColors.textTertiary;
+    }
+  }
+
+  Color _statusBgColor(String status) {
+    switch (status) {
+      case 'normal':
+        return WellxColors.tertiaryContainer.withValues(alpha: 0.3);
+      case 'borderline':
+        return WellxColors.amberWatch.withValues(alpha: 0.12);
+      case 'abnormal':
+        return WellxColors.errorContainer.withValues(alpha: 0.2);
+      default:
+        return WellxColors.surfaceContainerLow;
     }
   }
 }
