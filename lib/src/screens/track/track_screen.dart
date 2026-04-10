@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/wellx_colors.dart';
-import '../../theme/wellx_typography.dart';
 import '../../theme/wellx_spacing.dart';
 import '../../providers/pet_provider.dart';
 
@@ -162,499 +165,290 @@ class _TrackScreenState extends ConsumerState<TrackScreen>
   Widget build(BuildContext context) {
     final pet = ref.watch(selectedPetProvider);
     final petBreed = pet?.breed ?? '';
+    final petName = pet?.name ?? 'Your Pet';
     final isBreedKnown =
         petBreed.isNotEmpty && petBreed != (pet?.species ?? 'Dog');
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: WellxColors.background,
+      backgroundColor: cs.surface,
       body: CustomScrollView(
         slivers: [
-          // Hero header
-          SliverToBoxAdapter(child: _buildHeroHeader(pet, isBreedKnown)),
+          // Glass blur app bar
+          SliverToBoxAdapter(child: _buildGlassAppBar(context, pet)),
 
-          // Health check cards
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: WellxSpacing.xl,
-              vertical: WellxSpacing.lg,
+          // Hero section
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  WellxSpacing.xl, WellxSpacing.lg, WellxSpacing.xl, 0),
+              child: _buildHeroCard(context, petName),
             ),
+          ),
+
+          // "Daily Wellness Tasks" heading
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  WellxSpacing.xl, WellxSpacing.xl, WellxSpacing.xl, WellxSpacing.lg),
+              child: Text(
+                'Daily Wellness Tasks',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                ),
+              ),
+            ),
+          ),
+
+          // Task cards
+          SliverPadding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: WellxSpacing.xl),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                for (final type in HealthCheckType.values) ...[
-                  FadeTransition(
-                    opacity: _fadeAnim,
-                    child: _buildJourneyCard(
-                      type,
-                      isDone: _completed.contains(type),
-                      breed: isBreedKnown ? petBreed : null,
-                    ),
-                  ),
-                  const SizedBox(height: WellxSpacing.lg),
-                ],
-                // Blood test / lab results upload card
+                // Card A — Body Condition
                 FadeTransition(
                   opacity: _fadeAnim,
-                  child: _buildBloodTestCard(),
+                  child: _buildTaskCard(
+                    context: context,
+                    categoryLabel: 'VITALITY',
+                    categoryIcon: Icons.fitness_center,
+                    categoryBgColor:
+                        cs.primaryContainer.withValues(alpha: 0.3),
+                    categoryTextColor: cs.onPrimaryContainer,
+                    heading: 'Body Condition',
+                    description:
+                        'AI-powered body condition scoring via photo analysis for accurate weight tracking.',
+                    placeholderIcon: null,
+                    ctaLabel: _completed.contains(HealthCheckType.bcs)
+                        ? 'Check Again'
+                        : 'Start BCS Check',
+                    onTap: () => _navigateToFlow(HealthCheckType.bcs),
+                  ),
                 ),
                 const SizedBox(height: WellxSpacing.lg),
+
+                // Card B — [Breed] Lifestyle
+                FadeTransition(
+                  opacity: _fadeAnim,
+                  child: _buildTaskCard(
+                    context: context,
+                    categoryLabel: 'BREED SPECIFIC',
+                    categoryIcon: Icons.pets,
+                    categoryBgColor:
+                        cs.tertiaryContainer.withValues(alpha: 0.3),
+                    categoryTextColor: cs.onTertiaryContainer,
+                    heading: isBreedKnown
+                        ? '$petBreed Lifestyle'
+                        : 'Breed Lifestyle',
+                    description: isBreedKnown
+                        ? 'Breed-specific lifestyle assessment to optimize $petName\'s specific energy and joint needs.'
+                        : 'Breed-specific lifestyle assessment to optimize your pet\'s specific energy and joint needs.',
+                    placeholderIcon: null,
+                    ctaLabel: _completed.contains(HealthCheckType.wellness)
+                        ? 'Check Again'
+                        : isBreedKnown
+                            ? 'Start $petBreed Check'
+                            : 'Start Survey',
+                    onTap: () => _navigateToFlow(HealthCheckType.wellness),
+                  ),
+                ),
+                const SizedBox(height: WellxSpacing.lg),
+
+                // Card C — Urine Screening
+                FadeTransition(
+                  opacity: _fadeAnim,
+                  child: _buildTaskCard(
+                    context: context,
+                    categoryLabel: 'CLINICAL',
+                    categoryIcon: Icons.biotech,
+                    categoryBgColor: cs.secondaryContainer,
+                    categoryTextColor: cs.onSecondaryContainer,
+                    heading: 'Urine Screening',
+                    description:
+                        'At-home urine analysis with AI recognition for early detection of kidney markers.',
+                    placeholderIcon: Icons.science,
+                    ctaLabel:
+                        _completed.contains(HealthCheckType.urineStrip)
+                            ? 'Check Again'
+                            : 'Scan Strip',
+                    onTap: () =>
+                        _navigateToFlow(HealthCheckType.urineStrip),
+                  ),
+                ),
+
+                // Bottom padding for floating nav bar
+                const SizedBox(height: 120),
               ]),
             ),
           ),
-
-          // Rewards section
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: WellxSpacing.xl),
-            sliver: SliverToBoxAdapter(
-              child: FadeTransition(
-                opacity: _fadeAnim,
-                child: _buildRewardsSection(),
-              ),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
       ),
     );
   }
 
-  // ---------- Hero Header ----------
+  // ---------- Glass App Bar ----------
 
-  Widget _buildHeroHeader(dynamic pet, bool isBreedKnown) {
-    final petName = pet?.name ?? 'Health Checks';
-    final petBreed = pet?.breed ?? '';
+  Widget _buildGlassAppBar(BuildContext context, dynamic pet) {
+    final cs = Theme.of(context).colorScheme;
 
-    return Container(
-      height: 200,
-      decoration: const BoxDecoration(gradient: WellxColors.inkGradient),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: Container(
+          color: cs.surface.withValues(alpha: 0.8),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: WellxSpacing.xl, vertical: WellxSpacing.md),
+              child: Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'HEALTH CHECKS',
-                          style: WellxTypography.sectionLabel.copyWith(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            letterSpacing: 2.0,
+                  // Pet avatar
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: cs.primaryContainer,
+                        width: 2,
+                      ),
+                      color: cs.primaryContainer.withValues(alpha: 0.3),
+                    ),
+                    child: pet?.photoUrl != null && pet!.photoUrl!.isNotEmpty
+                        ? ClipOval(
+                            child: Image.network(
+                              pet.photoUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, e, s) => Icon(
+                                Icons.pets,
+                                size: 20,
+                                color: cs.primary,
+                              ),
+                            ),
+                          )
+                        : Icon(
+                            Icons.pets,
+                            size: 20,
+                            color: cs.primary,
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          pet != null ? petName : 'Health Checks',
-                          style: WellxTypography.screenTitle.copyWith(
-                            color: Colors.white,
-                            fontSize: 28,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          pet != null
-                              ? '${isBreedKnown ? "$petBreed \u00b7 " : ""}At-Home Monitoring'
-                              : 'Know more. Catch early. Live longer.',
-                          style: WellxTypography.captionText.copyWith(
-                            color: Colors.white.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
+                  ),
+                  const SizedBox(width: WellxSpacing.md),
+
+                  // Title
+                  Text(
+                    'Health Checks',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
                     ),
                   ),
-                  _buildProgressRing(),
+
+                  const Spacer(),
+
+                  // Notification bell
+                  IconButton(
+                    onPressed: () {},
+                    icon: Icon(
+                      Icons.notifications_outlined,
+                      color: cs.primary,
+                      size: 24,
+                    ),
+                  ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildProgressRing() {
-    return SizedBox(
-      width: 54,
-      height: 54,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircularProgressIndicator(
-            value: 1.0,
-            strokeWidth: 4,
-            color: Colors.white.withValues(alpha: 0.2),
-            backgroundColor: Colors.transparent,
-          ),
-          CircularProgressIndicator(
-            value: _completedCount / 3.0,
-            strokeWidth: 4,
-            color: Colors.white,
-            backgroundColor: Colors.transparent,
-            strokeCap: StrokeCap.round,
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$_completedCount',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                'of 3',
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  // ---------- Hero Card ----------
 
-  // ---------- Journey Card ----------
+  Widget _buildHeroCard(BuildContext context, String petName) {
+    final cs = Theme.of(context).colorScheme;
+    final ringProgress = _completedCount / 3.0;
 
-  Widget _buildJourneyCard(
-    HealthCheckType type, {
-    required bool isDone,
-    String? breed,
-  }) {
     return Container(
-      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isDone
-              ? type.accentColor.withValues(alpha: 0.2)
-              : WellxColors.border,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: WellxColors.onPrimaryFixedVariant,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: WellxColors.tonalShadow,
       ),
-      child: Column(
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          // Gradient top strip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDone
-                    ? type.gradientColors
-                        .map((c) => c.withValues(alpha: 0.7))
-                        .toList()
-                    : type.gradientColors,
+          // Decorative blur orb (top-right)
+          Positioned(
+            top: -30,
+            right: -30,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.primaryContainer.withValues(alpha: 0.2),
               ),
             ),
+          ),
+
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(WellxSpacing.xl),
             child: Row(
               children: [
-                // Step number badge
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isDone
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.25),
-                  ),
-                  child: Center(
-                    child: isDone
-                        ? Icon(Icons.check,
-                            size: 13, color: type.gradientColors[0])
-                        : Text(
-                            '${type.stepNumber}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Title + subtitle
+                // Left side — name + subtitle
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        type == HealthCheckType.wellness && breed != null
-                            ? '$breed Lifestyle'
-                            : type.title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        petName,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
                           color: Colors.white,
+                          height: 1.2,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Text(
-                        type.subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
+                        'At-Home Monitoring',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.8),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Coin reward badge
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white
-                        .withValues(alpha: isDone ? 0.1 : 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.star,
-                        size: 9,
-                        color: isDone
-                            ? Colors.white.withValues(alpha: 0.5)
-                            : Colors.white,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        '+${type.coinReward}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isDone
-                              ? Colors.white.withValues(alpha: 0.5)
-                              : Colors.white,
+                          color: Colors.white.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
 
-          // White bottom section with CTA
-          Container(
-            color: WellxColors.cardSurface,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // CTA Button
+                // Right side — progress ring
                 SizedBox(
-                  width: double.infinity,
-                  child: isDone
-                      ? OutlinedButton.icon(
-                          onPressed: () => _navigateToFlow(type),
-                          icon: const Icon(Icons.refresh, size: 13),
-                          label: Text(type.ctaLabel(
-                              breed: breed, isDone: true)),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: WellxColors.textPrimary,
-                            side:
-                                const BorderSide(color: WellxColors.border, width: 1.5),
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            textStyle: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        )
-                      : Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: type.gradientColors,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () => _navigateToFlow(type),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 13),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(type.icon,
-                                        size: 13, color: Colors.white),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      type.ctaLabel(breed: breed),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------- Blood Test Upload Card ----------
-
-  Widget _buildBloodTestCard() {
-    const gradientColors = [Color(0xFF1B6B4A), Color(0xFF2E9E6A)];
-    const accentColor = Color(0xFF2E9E6A);
-
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: WellxColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Gradient top strip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: gradientColors),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.25),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.biotech_rounded,
-                        size: 15, color: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Blood Panel Upload',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'AI extracts biomarkers from your lab report',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white70,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.star, size: 9, color: Colors.white),
-                      SizedBox(width: 3),
-                      Text(
-                        '+15',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // White bottom section with CTA
-          Container(
-            color: WellxColors.cardSurface,
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: gradientColors),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => context.push('/ocr-scan'),
-                    borderRadius: BorderRadius.circular(12),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 13),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                  width: 64,
+                  height: 64,
+                  child: CustomPaint(
+                    painter: _ProgressRingPainter(
+                      progress: ringProgress,
+                      trackColor: Colors.white.withValues(alpha: 0.1),
+                      fillColor: WellxColors.tertiaryContainer,
+                      strokeWidth: 5,
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.upload_file_rounded,
-                              size: 13, color: Colors.white),
-                          SizedBox(width: 8),
                           Text(
-                            'Upload Blood Test',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                            '$_completedCount/3',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
                               color: Colors.white,
                             ),
                           ),
@@ -663,7 +457,7 @@ class _TrackScreenState extends ConsumerState<TrackScreen>
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ],
@@ -671,130 +465,173 @@ class _TrackScreenState extends ConsumerState<TrackScreen>
     );
   }
 
-  // ---------- Rewards Section ----------
+  // ---------- Task Card ----------
 
-  Widget _buildRewardsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+  Widget _buildTaskCard({
+    required BuildContext context,
+    required String categoryLabel,
+    required IconData categoryIcon,
+    required Color categoryBgColor,
+    required Color categoryTextColor,
+    required String heading,
+    required String description,
+    required IconData? placeholderIcon,
+    required String ctaLabel,
+    required VoidCallback onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: WellxColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(WellxSpacing.cardRadius),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(WellxSpacing.cardPadding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'REWARDS',
-              style: WellxTypography.sectionLabel.copyWith(
-                color: WellxColors.midPurple,
-                letterSpacing: 1.5,
-              ),
+            // Top row: category pill + image placeholder
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Left content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Category pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: categoryBgColor,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(categoryIcon,
+                                size: 12, color: categoryTextColor),
+                            const SizedBox(width: 4),
+                            Text(
+                              categoryLabel,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                color: categoryTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: WellxSpacing.md),
+
+                      // Heading
+                      Text(
+                        heading,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: WellxSpacing.sm),
+
+                      // Description
+                      Text(
+                        description,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          height: 1.5,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: WellxSpacing.lg),
+
+                // 96x96 image placeholder
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: placeholderIcon != null
+                      ? Center(
+                          child: Icon(
+                            placeholderIcon,
+                            size: 40,
+                            color: cs.primary.withValues(alpha: 0.4),
+                          ),
+                        )
+                      : Center(
+                          child: Icon(
+                            Icons.image_outlined,
+                            size: 32,
+                            color: cs.outline.withValues(alpha: 0.4),
+                          ),
+                        ),
+                ),
+              ],
             ),
-            const Spacer(),
-            if (_completedCount == 3)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.emoji_events,
-                      size: 10, color: WellxColors.midPurple),
-                  const SizedBox(width: 4),
-                  Text(
-                    'All Complete!',
-                    style: WellxTypography.smallLabel.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: WellxColors.midPurple,
+
+            const SizedBox(height: WellxSpacing.lg),
+
+            // Full-width CTA pill button
+            SizedBox(
+              width: double.infinity,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: BorderRadius.circular(50),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cs.primary.withValues(alpha: 0.2),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onTap,
+                    borderRadius: BorderRadius.circular(50),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Text(
+                        ctaLabel,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                ],
+                ),
               ),
-          ],
-        ),
-        const SizedBox(height: WellxSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: _rewardBadge(
-                icon: Icons.local_fire_department,
-                label: 'Streak',
-                value: '${_completedCount > 0 ? _completedCount : 1}d',
-                color: WellxColors.coral,
-              ),
-            ),
-            const SizedBox(width: WellxSpacing.md),
-            Expanded(
-              child: _rewardBadge(
-                icon: Icons.star,
-                label: 'Earned',
-                value: '${_completedCount * 8}',
-                color: WellxColors.midPurple,
-              ),
-            ),
-            const SizedBox(width: WellxSpacing.md),
-            Expanded(
-              child: _completedCount == 3
-                  ? _rewardBadge(
-                      icon: Icons.emoji_events,
-                      label: 'Hattrick',
-                      value: '+15',
-                      color: WellxColors.scoreGreen,
-                    )
-                  : _rewardBadge(
-                      icon: Icons.track_changes,
-                      label: 'Goal',
-                      value: '${3 - _completedCount} left',
-                      color: WellxColors.textSecondary,
-                    ),
             ),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _rewardBadge({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            color.withValues(alpha: 0.08),
-            color.withValues(alpha: 0.04),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: WellxColors.border.withValues(alpha: 0.6),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.12),
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: WellxColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: WellxTypography.microLabel,
-          ),
-        ],
       ),
     );
   }
@@ -804,4 +641,56 @@ class _TrackScreenState extends ConsumerState<TrackScreen>
   void _navigateToFlow(HealthCheckType type) {
     context.push(type.routePath);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Progress Ring Painter
+// ---------------------------------------------------------------------------
+
+class _ProgressRingPainter extends CustomPainter {
+  final double progress;
+  final Color trackColor;
+  final Color fillColor;
+  final double strokeWidth;
+
+  _ProgressRingPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.fillColor,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    // Track
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, trackPaint);
+
+    // Fill arc
+    if (progress > 0) {
+      final fillPaint = Paint()
+        ..color = fillColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        fillPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ProgressRingPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
