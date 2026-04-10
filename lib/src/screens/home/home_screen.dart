@@ -187,10 +187,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         onRefresh: _onRefresh,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(
+          padding: EdgeInsets.only(
             left: WellxSpacing.lg,
             right: WellxSpacing.lg,
-            top: 88,
+            top: MediaQuery.of(context).padding.top + 64 + 8,
             bottom: 120,
           ),
           child: Column(

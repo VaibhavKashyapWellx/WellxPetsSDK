@@ -119,17 +119,14 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
 
     final hasMessages = chatState.messages.isNotEmpty || chatState.isLoading;
 
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-
     return Scaffold(
       backgroundColor: WellxColors.surface,
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       appBar: _buildAppBar(pet?.name),
-      body: Stack(
+      body: Column(
         children: [
-          // Main content area — pad bottom so messages don't hide behind input
-          Positioned.fill(
-            bottom: 80 + keyboardHeight,
+          // Main content area
+          Expanded(
             child: GestureDetector(
               onTap: () => _focusNode.unfocus(),
               child: hasMessages
@@ -140,29 +137,14 @@ class _VetChatScreenState extends ConsumerState<VetChatScreen> {
 
           // Error banner
           if (chatState.errorMessage != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 200 + keyboardHeight,
-              child: _buildErrorBanner(chatState.errorMessage!),
-            ),
+            _buildErrorBanner(chatState.errorMessage!),
 
           // Pending image preview
           if (_pendingImage != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 140 + keyboardHeight,
-              child: _buildImagePreview(),
-            ),
+            _buildImagePreview(),
 
-          // Floating input bar — moves up with keyboard
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: keyboardHeight,
-            child: _buildFloatingInputBar(chatState.isLoading),
-          ),
+          // Input bar
+          _buildFloatingInputBar(chatState.isLoading),
         ],
       ),
     );
